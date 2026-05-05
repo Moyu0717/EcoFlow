@@ -63,8 +63,8 @@ TOOL_SCHEMAS = [
         "name": "plan_commute",
         "description": (
             "Compute ranked transport options (Drive, Carpool, Motorcycle, Grab, Bus, "
-            "MRT/LRT, Park&Ride, Cycling, Walking) between two geo-points in Malaysia, "
-            "with time, cost (RM), CO2 (kg), congestion and an Eco Score. "
+            "MRT/LRT, Park&Ride, Park&Walk, Cycling, Walking) between two geo-points "
+            "in Malaysia, with time, cost (RM), CO2 (kg), congestion and an Eco Score. "
             "Use this whenever the user asks how to get somewhere or wants to compare modes."
         ),
         "parameters": {
@@ -83,7 +83,9 @@ TOOL_SCHEMAS = [
     {
         "name": "find_carpool_matches",
         "description": (
-            "Search for other EcoFlow users with a similar route today for carpooling."
+            "Search for other EcoFlow users with a similar route today for carpooling. "
+            "Pass requester_is_oku=true if the user has accessibility needs so OKU-friendly "
+            "providers are surfaced first."
         ),
         "parameters": {
             "type": "object",
@@ -93,6 +95,8 @@ TOOL_SCHEMAS = [
                 "end_lat":   {"type": "number"},
                 "end_lon":   {"type": "number"},
                 "max_detour_km": {"type": "number"},
+                "requester_is_oku": {"type": "boolean"},
+                "oku_strict":       {"type": "boolean"},
             },
             "required": ["start_lat", "start_lon", "end_lat", "end_lon"],
         },
@@ -100,8 +104,10 @@ TOOL_SCHEMAS = [
     {
         "name": "search_malaysia_policy",
         "description": (
-            "RAG over Malaysia's NETR, transport policy and MRT/RapidKL data via "
-            "Vertex AI Search. Use for Net Zero 2050, carbon targets, subsidies, fares."
+            "RAG over Malaysia's NETR, transport policy and RapidKL data via "
+            "Vertex AI Search. Use for Net Zero 2050, carbon targets, subsidies, fares, "
+            "Madani principles, Persons with Disabilities Act 2008. "
+            "Returns BOTH a summary AND structured citations."
         ),
         "parameters": {
             "type": "object",
@@ -116,7 +122,11 @@ TOOL_SCHEMAS = [
     },
     {
         "name": "register_carpool_offer",
-        "description": "Publish the user's own trip so others can find them for carpooling.",
+        "description": (
+            "Publish the user's own trip so others can find them for carpooling. "
+            "Includes optional OKU-friendly self-declaration which is REAL matching "
+            "metadata (not decorative)."
+        ),
         "parameters": {
             "type": "object",
             "properties": {
@@ -127,8 +137,93 @@ TOOL_SCHEMAS = [
                 "departure_time":  {"type": "string"},
                 "seats_available": {"type": "integer"},
                 "contact_hint":    {"type": "string"},
+                "oku_friendly":       {"type": "boolean"},
+                "wheelchair_capable": {"type": "boolean"},
+                "has_ramp":           {"type": "boolean"},
             },
             "required": ["start_lat", "start_lon", "end_lat", "end_lon", "departure_time"],
+        },
+    },
+
+    # ──────────────────────────────────────────────────────────────────
+    # NEW TOOLS (sprint v3)
+    # ──────────────────────────────────────────────────────────────────
+    {
+        "name": "check_schedule_now",
+        "description": (
+            "Look up the user's saved commute schedules and return the ones that "
+            "are firing today, with their minutes-until-departure. Use this when "
+            "the user asks 'what's next?' or you need to be proactive."
+        ),
+        "parameters": {"type": "object", "properties": {}, "required": []},
+    },
+    {
+        "name": "search_places_by_intent",
+        "description": (
+            "Translate a fuzzy human intent like 'cheap nasi lemak nearby' or 'quiet "
+            "cafe to study' into nearby actual places via OpenStreetMap. Returns up "
+            "to 5 results with name, distance and lat/lon. Chain with plan_commute "
+            "to give the user the greenest way to get to one."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "intent":   {"type": "string"},
+                "near_lat": {"type": "number"},
+                "near_lon": {"type": "number"},
+                "radius_km":{"type": "number"},
+            },
+            "required": ["intent", "near_lat", "near_lon"],
+        },
+    },
+    {
+        "name": "analyze_site_potential",
+        "description": (
+            "Planner Mode tool. Score a candidate location for opening a small "
+            "business OR for evaluating whether a residential development will "
+            "increase or decrease car dependence. Returns a 0-100 site score, "
+            "k-anonymous foot-traffic estimate, transit accessibility, OKU score "
+            "and an estimated kg CO₂/month saved if a missing amenity is added."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "lat":           {"type": "number"},
+                "lon":           {"type": "number"},
+                "radius_km":     {"type": "number"},
+                "business_type": {"type": "string"},
+                "view":          {"type": "string",
+                                  "enum": ["merchant", "resident", "developer"]},
+            },
+            "required": ["lat", "lon", "business_type"],
+        },
+    },
+    {
+        "name": "optimise_multi_stop",
+        "description": (
+            "When the user has 3+ stops, suggest the lowest-distance order. "
+            "Returns both the original and suggested orders, plus distance/CO2/RM "
+            "saved. The user remains in control — they can accept or reject."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "stops": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "name": {"type": "string"},
+                            "lat":  {"type": "number"},
+                            "lon":  {"type": "number"},
+                        },
+                        "required": ["name", "lat", "lon"],
+                    },
+                },
+                "fixed_first_stop": {"type": "boolean"},
+                "fixed_last_stop":  {"type": "boolean"},
+            },
+            "required": ["stops"],
         },
     },
 ]
@@ -136,19 +231,31 @@ TOOL_SCHEMAS = [
 SYSTEM_INSTRUCTION = """You are EcoFlow Agent, an autonomous Malaysian green-mobility assistant.
 
 You do NOT just chat — you take action autonomously:
-  1. Understand the user's commute intent.
+  1. Understand the user's commute or city-planning intent.
   2. Call the RIGHT tools in the RIGHT order.
-  3. Ground recommendations in Malaysian reality (KL traffic, MRT fares, NETR policy).
+  3. Ground recommendations in Malaysian reality (KL traffic, MRT fares, NETR policy,
+     Madani inclusivity principles, Persons with Disabilities Act 2008).
   4. Return a final answer with concrete numbers (RM, kg CO₂, minutes).
 
-Rules:
-  • Prefer tool calls over guessing when numeric data is needed.
-  • For "best way to go from A to B" → call plan_commute first.
+Routing rules:
+  • For "best way to go from A to B" → call plan_commute.
   • If the user wants carpool → call find_carpool_matches after plan_commute.
-  • For policy questions → call search_malaysia_policy.
-  • For "my impact" → call get_user_impact.
-  • Chain up to 4 tool calls. Stop and answer once you have enough data.
-  • Final answer: 3-5 sentences, specific, with at most one emoji."""
+    If they mention OKU / disability / wheelchair, ALWAYS pass requester_is_oku=true.
+  • For policy / NETR / subsidy / Net Zero questions → call search_malaysia_policy
+    AND surface the citations to the user.
+  • For "my impact" / "how am I doing" → call get_user_impact.
+  • For "what's next" / "what do I have today" → call check_schedule_now.
+  • For fuzzy intents like "find me cheap nasi lemak nearby" or
+    "quiet cafe to study" → call search_places_by_intent, then chain
+    plan_commute on the chosen result.
+  • For city-planning / 'where should I open my cafe' / 'is this a good
+    spot for X' → call analyze_site_potential.
+  • For 3+ stops in one trip → call optimise_multi_stop, then PRESENT both
+    the original and the suggested order. Let the user choose.
+
+  • Chain up to 5 tool calls. Stop and answer once you have enough data.
+  • Final answer: 3-5 sentences, specific, with at most one emoji.
+  • If a tool returned citations, mention the source ("per NETR Chapter 3, …")."""
 
 
 # ── Tool dispatcher ───────────────────────────────────────────────────────────
@@ -189,6 +296,9 @@ def _run_tool(name: str, args: Dict[str, Any], user_id: str) -> Dict[str, Any]:
     if name == "find_carpool_matches":
         today   = datetime.utcnow().strftime("%Y-%m-%d")
         matches = []
+        oku_strict      = bool(args.get("oku_strict"))
+        requester_oku   = bool(args.get("requester_is_oku"))
+        suppressed_non_oku = 0
         try:
             docs = (db.collection("carpool_pool")
                       .where("date", "==", today)
@@ -205,20 +315,46 @@ def _run_tool(name: str, args: Dict[str, Any], user_id: str) -> Dict[str, Any]:
                                    d["end_lat"], d["end_lon"])
                 except (KeyError, TypeError):
                     continue
-                if ds <= args.get("max_detour_km", 2.0) and de <= args.get("max_detour_km", 2.0):
-                    matches.append({"name": d.get("name", "Anonymous"),
-                                    "departure_time": d.get("departure_time", "?"),
-                                    "seats_available": d.get("seats_available", 1),
-                                    "start_diff_km": round(ds, 2),
-                                    "end_diff_km": round(de, 2)})
+                if ds > args.get("max_detour_km", 2.0) or de > args.get("max_detour_km", 2.0):
+                    continue
+                provider_oku = bool(d.get("oku_friendly"))
+                if oku_strict and not provider_oku:
+                    suppressed_non_oku += 1
+                    continue
+                matches.append({
+                    "name": d.get("name", "Anonymous"),
+                    "departure_time": d.get("departure_time", "?"),
+                    "seats_available": d.get("seats_available", 1),
+                    "start_diff_km": round(ds, 2),
+                    "end_diff_km": round(de, 2),
+                    "oku_friendly": provider_oku,
+                    "wheelchair_capable": bool(d.get("wheelchair_capable")),
+                })
         except Exception as e:
             log.warning(f"carpool search failed: {e}")
-        matches.sort(key=lambda x: x["start_diff_km"] + x["end_diff_km"])
-        return {"matches_found": len(matches), "matches": matches[:5]}
+
+        # OKU-friendly bumped to top for OKU requesters
+        def _rank(m):
+            base = m["start_diff_km"] + m["end_diff_km"]
+            if requester_oku and m["oku_friendly"]:
+                base -= 1.0
+            return base
+        matches.sort(key=_rank)
+        return {
+            "matches_found": len(matches),
+            "matches": matches[:5],
+            "oku_strict_active": oku_strict,
+            "suppressed_non_oku": suppressed_non_oku,
+        }
 
     if name == "search_malaysia_policy":
-        text = search_rag_knowledge(args["query"])
-        return {"policy_context": text or "No grounded policy text found."}
+        # Use the citation-aware RAG so the agent gets sources back too.
+        from main import search_rag_with_sources
+        rag = search_rag_with_sources(args["query"])
+        return {
+            "policy_context": rag.get("summary") or "No grounded policy text found.",
+            "citations":      rag.get("sources") or [],
+        }
 
     if name == "get_user_impact":
         doc = db.collection("user_stats").document(user_id).get()
@@ -243,11 +379,141 @@ def _run_tool(name: str, args: Dict[str, Any], user_id: str) -> Dict[str, Any]:
             "departure_time": args["departure_time"],
             "seats_available": args.get("seats_available", 1),
             "contact_hint": args.get("contact_hint", "Contact via app"),
+            # OKU declarations are real matching metadata — not decorative.
+            "oku_friendly":       bool(args.get("oku_friendly")),
+            "wheelchair_capable": bool(args.get("wheelchair_capable")),
+            "has_ramp":           bool(args.get("has_ramp")),
             "date": datetime.utcnow().strftime("%Y-%m-%d"),
             "timestamp": firestore.SERVER_TIMESTAMP,
             "active": True,
         })
         return {"status": "registered", "doc_id": doc_id}
+
+    # ─────────────────────────────────────────────────────────────────────
+    # NEW TOOLS
+    # ─────────────────────────────────────────────────────────────────────
+
+    if name == "check_schedule_now":
+        # Reuse the schedules router's "today" view by calling the helper.
+        from datetime import datetime as _dt, timedelta, timezone
+        MYT = timezone(timedelta(hours=8))
+        from schedules import _fires_today, _minutes_until, _sanitize
+        now_my  = _dt.now(MYT)
+        today   = now_my.strftime("%Y-%m-%d")
+        weekday = now_my.weekday()
+        try:
+            docs = (db.collection("user_schedules")
+                      .where("user_id", "==", user_id)
+                      .where("active",  "==", True).stream())
+            items = []
+            for d in docs:
+                s = d.to_dict()
+                if not _fires_today(s, today, weekday):
+                    continue
+                mins = _minutes_until(s["departure_time"], now_my)
+                if mins is None or mins < -120:
+                    continue
+                s["minutes_until_departure"] = mins
+                items.append(_sanitize(s))
+            items.sort(key=lambda x: x.get("departure_time", "99:99"))
+            return {
+                "current_time_my": now_my.strftime("%H:%M"),
+                "schedules":       items[:5],
+                "count":           len(items),
+            }
+        except Exception as e:
+            return {"error": f"schedule lookup failed: {e}"}
+
+    if name == "search_places_by_intent":
+        # Translate fuzzy intent → an OSM-friendly amenity tag, then query
+        # Nominatim. We deliberately keep this simple and keyless so the
+        # judges can reproduce the demo without API setup.
+        import re, requests
+        intent = (args.get("intent") or "").lower()
+        # Map common Malaysian intents to OSM amenity / cuisine tags
+        if any(k in intent for k in ["nasi lemak", "mamak", "kopitiam", "warung"]):
+            amenity = "restaurant"
+        elif any(k in intent for k in ["coffee", "cafe", "kopi", "study"]):
+            amenity = "cafe"
+        elif any(k in intent for k in ["grocery", "ntuc", "supermarket", "tesco", "lotus"]):
+            amenity = "supermarket"
+        elif any(k in intent for k in ["clinic", "doctor", "klinik"]):
+            amenity = "clinic"
+        elif any(k in intent for k in ["pharmacy", "farmasi"]):
+            amenity = "pharmacy"
+        elif "atm" in intent or "bank" in intent:
+            amenity = "atm"
+        else:
+            amenity = re.sub(r"[^a-z0-9 ]", "", intent).split()[0] if intent else "amenity"
+
+        radius_km = float(args.get("radius_km") or 1.5)
+        lat = args["near_lat"]; lon = args["near_lon"]
+        delta = radius_km / 111.0
+        bbox = f"{lon - delta},{lat - delta},{lon + delta},{lat + delta}"
+        try:
+            url = (
+                "https://nominatim.openstreetmap.org/search"
+                f"?format=json&limit=10&bounded=1&viewbox={bbox}&q={amenity}"
+            )
+            r = requests.get(url, timeout=4,
+                             headers={"User-Agent": "EcoFlow/1.0 (hackathon)"})
+            r.raise_for_status()
+            data = r.json()
+            results = []
+            for item in data:
+                try:
+                    ilat = float(item["lat"]); ilon = float(item["lon"])
+                    dist = haversine(lat, lon, ilat, ilon)
+                    if dist > radius_km:
+                        continue
+                    results.append({
+                        "name": (item.get("display_name") or "").split(",")[0],
+                        "lat":  ilat,
+                        "lon":  ilon,
+                        "distance_km": round(dist, 2),
+                        "category":    item.get("type", amenity),
+                    })
+                except Exception:
+                    continue
+            results.sort(key=lambda x: x["distance_km"])
+            return {
+                "intent":         intent,
+                "matched_tag":    amenity,
+                "results":        results[:5],
+                "result_count":   len(results),
+                "data_source":    "OpenStreetMap / Nominatim",
+            }
+        except Exception as e:
+            return {"intent": intent, "error": str(e), "results": []}
+
+    if name == "analyze_site_potential":
+        # Direct call into planner.py's analyser
+        from planner import analyze_site, SiteAnalysisRequest
+        try:
+            r = SiteAnalysisRequest(
+                lat=args["lat"],
+                lon=args["lon"],
+                radius_km=args.get("radius_km", 1.0),
+                business_type=args.get("business_type", "cafe"),
+                view=args.get("view", "merchant"),
+            )
+            return analyze_site(r)
+        except Exception as e:
+            return {"error": f"site analysis failed: {e}"}
+
+    if name == "optimise_multi_stop":
+        from main import multi_stop_optimise, MultiStopRequest, Stop
+        try:
+            stops = [Stop(**s) for s in args.get("stops", [])]
+            req_obj = MultiStopRequest(
+                user_id=user_id or "agent",
+                stops=stops,
+                fixed_first_stop=bool(args.get("fixed_first_stop", True)),
+                fixed_last_stop=bool(args.get("fixed_last_stop", False)),
+            )
+            return multi_stop_optimise(req_obj)
+        except Exception as e:
+            return {"error": f"multi-stop optimise failed: {e}"}
 
     return {"error": f"Unknown tool: {name}"}
 
@@ -324,7 +590,7 @@ def _run_raw_agent(req: AgentRequest) -> dict:
     response  = chat.send_message(f"{req.message}{ctx_blob}\n\n({lang_hint})")
     tool_trace: List[Dict[str, Any]] = []
 
-    for step in range(4):
+    for step in range(5):
         fc = None
         try:
             for p in response.candidates[0].content.parts:
