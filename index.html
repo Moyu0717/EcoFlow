@@ -1015,6 +1015,434 @@ body.side-panel-open #searchWrap {
   #searchWrap{width:calc(100vw - 88px)}
   .mode-grid{grid-template-columns:1fr}
 }
+
+/* ═══════════════════════════════════════════════════════════
+   v3 ADDITIONS — Mobile UI, Schedule, Planner, OKU, Mikro
+   These rules are appended at the end so they win specificity
+   battles with the original styles where they collide.
+   ═══════════════════════════════════════════════════════════ */
+
+/* ─── Stronger mobile layout (≤ 768px) ─────────────────────────── */
+@media (max-width: 768px){
+  :root{
+    --rail-w: 0px;
+    --panel-w: 100vw;
+  }
+  /* Hide the desktop nav rail on mobile, surface a bottom tab bar */
+  #navRail{display:none !important}
+  #searchWrap{
+    width: calc(100vw - 24px) !important;
+    left: 12px !important;
+    right: auto !important;
+    top: 12px !important;
+  }
+  /* All side panels become bottom sheets on mobile */
+  .side-panel{
+    left:0 !important;
+    right:0 !important;
+    width:100vw !important;
+    height: 80vh !important;
+    bottom:0 !important;
+    top:auto !important;
+    transform: translateY(100%) !important;
+    border-radius: 18px 18px 0 0 !important;
+  }
+  .side-panel.open{ transform: translateY(0) !important; }
+  /* Routes panel becomes a bottom sheet too */
+  #leftPanel{
+    left:0 !important;
+    right:0 !important;
+    bottom:64px !important;
+    top:auto !important;
+    width:100vw !important;
+    max-height: calc(100vh - 220px) !important;
+    border-radius: 18px 18px 0 0 !important;
+    transform: none !important;
+  }
+  /* Make the search dropdown overflow-safe */
+  #searchWrap .search-card{ max-width: calc(100vw - 24px); }
+  /* Generous tap targets */
+  button, .rail-item, .auth-tab, .auth-submit, .auth-guest{
+    min-height: 44px;
+  }
+  input, select, textarea{
+    font-size: 16px !important;   /* iOS: prevents auto-zoom */
+  }
+  /* Mode buttons go single-column */
+  .mode-grid{grid-template-columns:1fr !important}
+}
+
+/* ─── Mobile bottom tab bar (mirrors the desktop nav rail) ─────── */
+#mobileTabBar{
+  display:none;
+  position:fixed;
+  left:0; right:0; bottom:0;
+  height:64px;
+  background:var(--surface);
+  border-top:1px solid var(--border);
+  z-index:1100;
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+#mobileTabBar .tab{
+  flex:1;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:2px;
+  border:0; background:transparent;
+  color:var(--text2); cursor:pointer;
+  font-size:11px; font-weight:600;
+  font-family:var(--font);
+}
+#mobileTabBar .tab.active{ color:var(--accent); }
+#mobileTabBar .tab svg{ width:22px; height:22px; }
+@media (max-width: 768px){
+  #mobileTabBar{ display:flex; }
+}
+
+/* ─── "Today's Schedule" card (top of the map view) ────────────── */
+#todayCard{
+  position:fixed;
+  top:90px;
+  right:24px;
+  width:340px;
+  max-width:calc(100vw - 32px);
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:14px 16px;
+  box-shadow:var(--shadow);
+  z-index:900;
+  display:none;
+  font-family:var(--font);
+}
+#todayCard.show{display:block}
+#todayCard .tc-head{
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:10px;
+}
+#todayCard .tc-title{font-size:13px;font-weight:700;color:var(--text);letter-spacing:0.02em}
+#todayCard .tc-time {font-size:11px;color:var(--text3);font-family:var(--mono)}
+#todayCard .tc-row{
+  display:flex; align-items:center; gap:10px;
+  padding:10px 0; border-top:1px solid var(--border);
+}
+#todayCard .tc-row:first-of-type{border-top:0}
+#todayCard .tc-when{
+  font-family:var(--mono); font-size:13px; font-weight:700;
+  color:var(--text); min-width:48px;
+}
+#todayCard .tc-meta{flex:1; min-width:0}
+#todayCard .tc-label{font-size:13px;font-weight:600;color:var(--text)}
+#todayCard .tc-from{font-size:11px;color:var(--text3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+#todayCard .tc-mins{
+  font-size:11px; padding:3px 8px; border-radius:99px;
+  background:var(--accent-bg); color:var(--accent); font-weight:600;
+}
+#todayCard .tc-mins.urgent{ background:var(--orange-bg); color:var(--orange);}
+#todayCard .tc-add{
+  display:flex; width:100%; align-items:center; justify-content:center;
+  gap:6px; margin-top:10px; padding:9px 12px;
+  border-radius:10px; border:1px dashed var(--border2);
+  background:transparent; color:var(--text2); font-weight:600;
+  font-family:var(--font); cursor:pointer; font-size:12px;
+}
+#todayCard .tc-add:hover{ color:var(--accent); border-color:var(--accent); }
+@media (max-width: 768px){
+  #todayCard{ top:64px; left:12px; right:12px; width:auto; }
+}
+
+/* ─── Proactive Agent toast (the demo "WOW" moment) ─────────────── */
+#proactiveToast{
+  position:fixed;
+  top:24px;
+  left:50%;
+  transform:translateX(-50%) translateY(-150%);
+  width:min(440px, 92vw);
+  background:linear-gradient(180deg, var(--surface) 0%, var(--card) 100%);
+  border:1px solid var(--accent);
+  border-radius:16px;
+  padding:16px 18px;
+  box-shadow:0 12px 40px rgba(34,197,94,.25);
+  z-index:1500;
+  font-family:var(--font);
+  transition:transform .35s cubic-bezier(.25,.85,.4,1.05);
+}
+#proactiveToast.show{ transform: translateX(-50%) translateY(0); }
+#proactiveToast .pt-head{
+  display:flex; align-items:center; gap:8px;
+  font-size:11px; font-weight:700;
+  color:var(--accent); letter-spacing:0.08em; text-transform:uppercase;
+  margin-bottom:8px;
+}
+#proactiveToast .pt-head .dot{
+  width:8px; height:8px; border-radius:99px; background:var(--accent);
+  box-shadow:0 0 0 4px rgba(34,197,94,.18);
+  animation: ptPulse 1.5s ease-in-out infinite;
+}
+@keyframes ptPulse{
+  0%,100%{ box-shadow:0 0 0 4px rgba(34,197,94,.18); }
+  50%    { box-shadow:0 0 0 9px rgba(34,197,94,0);    }
+}
+#proactiveToast .pt-msg{
+  color:var(--text); font-size:14px; line-height:1.45; margin-bottom:12px;
+}
+#proactiveToast .pt-meta{
+  display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;
+}
+#proactiveToast .pt-chip{
+  font-size:11px; padding:4px 9px; border-radius:99px;
+  background:var(--card2); color:var(--text2); font-weight:600;
+  font-family:var(--mono);
+}
+#proactiveToast .pt-chip.green{ background:var(--accent-bg); color:var(--accent); }
+#proactiveToast .pt-actions{ display:flex; gap:8px; }
+#proactiveToast button{
+  flex:1; padding:9px 12px; border-radius:10px;
+  font-weight:700; font-size:13px; font-family:var(--font); cursor:pointer;
+  border:1px solid var(--border);
+}
+#proactiveToast .pt-accept{ background:var(--accent); color:#fff; border-color:var(--accent); }
+#proactiveToast .pt-dismiss{ background:transparent; color:var(--text2); }
+
+/* ─── Schedule modal ───────────────────────────────────────────── */
+.modal-backdrop{
+  position:fixed; inset:0; background:rgba(0,0,0,.5);
+  z-index:1400; display:none;
+  align-items:center; justify-content:center;
+  padding:20px;
+}
+.modal-backdrop.open{ display:flex; }
+.modal-card{
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:14px; padding:20px; width:100%; max-width:440px;
+  font-family:var(--font); color:var(--text);
+  max-height:90vh; overflow-y:auto;
+}
+.modal-card h3{ font-size:18px; margin-bottom:6px; }
+.modal-card p.sub{ color:var(--text3); font-size:13px; margin-bottom:16px; }
+.modal-card label{
+  display:block; font-size:11px; font-weight:700;
+  color:var(--text2); text-transform:uppercase; letter-spacing:0.04em;
+  margin:12px 0 6px;
+}
+.modal-card input[type=text],
+.modal-card input[type=time],
+.modal-card input[type=email],
+.modal-card input[type=date],
+.modal-card select,
+.modal-card textarea{
+  width:100%; padding:10px 12px;
+  background:var(--card); border:1px solid var(--border);
+  border-radius:8px; color:var(--text); font-size:14px;
+  font-family:var(--font);
+}
+.modal-card .repeat-grid{
+  display:flex; gap:6px; flex-wrap:wrap; margin-top:6px;
+}
+.modal-card .repeat-grid label{
+  display:flex; align-items:center; gap:6px; padding:6px 10px;
+  border:1px solid var(--border); border-radius:99px;
+  cursor:pointer; margin:0; text-transform:none; letter-spacing:0;
+  color:var(--text); font-weight:500; font-size:12px;
+}
+.modal-card .repeat-grid input{ accent-color: var(--accent); }
+.modal-card .actions{
+  display:flex; gap:8px; margin-top:18px;
+}
+.modal-card .actions button{
+  flex:1; padding:11px; border-radius:9px; font-weight:700;
+  font-family:var(--font); font-size:14px; cursor:pointer;
+  border:1px solid var(--border);
+}
+.modal-card .actions .primary{
+  background:var(--accent); color:#fff; border-color:var(--accent);
+}
+.modal-card .actions .secondary{
+  background:transparent; color:var(--text2);
+}
+
+/* ─── Planner Mode (citizen / planner toggle) ──────────────────── */
+#modeToggle{
+  position:fixed;
+  top:24px;
+  right:24px;
+  z-index:950;
+  display:flex; gap:0;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:99px; padding:4px;
+  box-shadow:var(--shadow-sm);
+}
+#modeToggle .mt-btn{
+  padding:8px 14px; border-radius:99px;
+  border:0; background:transparent;
+  color:var(--text2); font-weight:700; font-size:12px;
+  font-family:var(--font); cursor:pointer; white-space:nowrap;
+  display:flex; align-items:center; gap:6px;
+}
+#modeToggle .mt-btn.active{
+  background:var(--accent-bg); color:var(--accent);
+}
+@media (max-width: 768px){
+  #modeToggle{
+    top:auto; bottom:80px; right:50%; transform:translateX(50%);
+  }
+}
+
+/* When planner mode is active, dim citizen-only UI for clarity */
+body.planner-mode #leftPanel,
+body.planner-mode #searchWrap{ display:none !important; }
+body.planner-mode #plannerPanel{ display:flex !important; }
+
+/* Planner side-panel layout */
+#plannerPanel{
+  display:none;
+  position:fixed; top:90px; left:88px;
+  width:380px; max-width:calc(100vw - 100px);
+  max-height:calc(100vh - 110px);
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:14px; box-shadow:var(--shadow);
+  flex-direction:column;
+  font-family:var(--font); color:var(--text); z-index:850;
+}
+#plannerPanel .pp-head{
+  padding:14px 16px; border-bottom:1px solid var(--border);
+  display:flex; align-items:center; justify-content:space-between;
+}
+#plannerPanel .pp-head h3{ font-size:15px; }
+#plannerPanel .pp-head .pp-tag{
+  font-size:10px; font-family:var(--mono);
+  padding:3px 8px; border-radius:99px;
+  background:var(--purple-bg); color:var(--purple);
+  font-weight:700;
+}
+#plannerPanel .pp-body{
+  flex:1; overflow-y:auto; padding:14px 16px;
+}
+#plannerPanel .pp-form label{
+  display:block; font-size:11px; font-weight:700;
+  color:var(--text2); text-transform:uppercase; letter-spacing:0.04em;
+  margin:12px 0 6px;
+}
+#plannerPanel .pp-form input,
+#plannerPanel .pp-form select{
+  width:100%; padding:9px 11px;
+  background:var(--card); border:1px solid var(--border);
+  border-radius:8px; color:var(--text); font-size:13px;
+  font-family:var(--font);
+}
+#plannerPanel .pp-run{
+  width:100%; margin-top:14px; padding:11px;
+  background:var(--accent); color:#fff; border:0; border-radius:9px;
+  font-weight:700; cursor:pointer; font-family:var(--font);
+}
+#plannerPanel .pp-result{
+  margin-top:16px; padding-top:14px;
+  border-top:1px solid var(--border);
+}
+.pp-score{
+  display:flex; align-items:center; gap:14px; margin-bottom:14px;
+}
+.pp-score-num{
+  font-size:38px; font-weight:800; color:var(--accent);
+  font-family:var(--mono); line-height:1;
+}
+.pp-score-num.mid{color:var(--orange)}
+.pp-score-num.bad{color:var(--red)}
+.pp-score-meta .lbl{
+  font-size:10px; color:var(--text3); text-transform:uppercase;
+  letter-spacing:0.1em; font-weight:700;
+}
+.pp-score-meta .val{
+  font-size:13px; color:var(--text); font-weight:600;
+}
+.pp-stats{
+  display:grid; grid-template-columns:1fr 1fr; gap:8px;
+  margin:10px 0;
+}
+.pp-stat{
+  background:var(--card); padding:10px; border-radius:8px;
+  border:1px solid var(--border);
+}
+.pp-stat .lbl{
+  font-size:10px; color:var(--text3);
+  text-transform:uppercase; font-weight:700;
+}
+.pp-stat .val{font-size:14px; color:var(--text); font-weight:700; margin-top:2px;}
+.pp-stat .sub{font-size:11px; color:var(--text2);}
+.pp-narrative{
+  background:var(--card); padding:12px; border-radius:8px;
+  border-left:3px solid var(--purple);
+  font-size:13px; color:var(--text); line-height:1.5;
+}
+.pp-privacy{
+  margin-top:12px; padding:8px 10px;
+  background:var(--blue-bg); border-radius:8px;
+  font-size:11px; color:var(--blue); font-weight:600;
+  display:flex; gap:8px; align-items:center;
+}
+@media (max-width: 768px){
+  #plannerPanel{
+    top:auto; bottom:64px; left:0; right:0; width:100vw;
+    max-width:100vw; max-height:60vh;
+    border-radius:18px 18px 0 0;
+  }
+}
+
+/* ─── Citation chips (RAG sources from /api/v1/ai-chat) ────────── */
+.citation-chips{
+  display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;
+}
+.citation-chip{
+  display:inline-flex; align-items:center; gap:6px;
+  padding:5px 10px; font-size:11px; font-weight:600;
+  background:var(--blue-bg); color:var(--blue);
+  border-radius:99px; cursor:pointer;
+  border:1px solid rgba(59,130,246,.25);
+}
+.citation-chip:hover{ background:rgba(59,130,246,.2); }
+
+/* ─── OKU friendly chip ─────────────────────────────────────────── */
+.oku-chip{
+  display:inline-flex; align-items:center; gap:5px;
+  padding:3px 8px; font-size:10px; font-weight:700;
+  background:var(--purple-bg); color:var(--purple);
+  border-radius:99px;
+  letter-spacing:0.04em;
+}
+.oku-chip.mikro{ background:var(--orange-bg); color:var(--orange); }
+.oku-chip.verified{ background:var(--accent-bg); color:var(--accent); }
+
+/* ─── Mikro upload zone ──────────────────────────────────────────── */
+.upload-zone{
+  border:2px dashed var(--border2);
+  border-radius:10px;
+  padding:24px;
+  text-align:center;
+  cursor:pointer;
+  background:var(--card);
+  transition: all .2s ease;
+}
+.upload-zone:hover{
+  border-color:var(--accent);
+  background:var(--accent-bg);
+}
+.upload-zone input[type=file]{ display:none; }
+.upload-zone .uz-msg{ color:var(--text2); font-size:13px; }
+.upload-zone .uz-msg strong{ color:var(--text); }
+.upload-zone.processing{ border-color:var(--blue); background:var(--blue-bg); }
+
+/* Toast helper used by the demo flows */
+.demo-toast{
+  position:fixed; left:50%; bottom:24px; transform:translateX(-50%);
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:10px; padding:10px 16px;
+  font-family:var(--font); color:var(--text); font-size:13px;
+  box-shadow:var(--shadow);
+  z-index:1600;
+}
+@media (max-width: 768px){
+  .demo-toast{ bottom:80px; }
+}
 </style>
 </head>
 <body>
@@ -1099,6 +1527,192 @@ body.side-panel-open #searchWrap {
   </button>
   <div class="rail-spacer"></div>
   <div class="rail-avatar" id="railAvatar" onclick="navTo('profile')">?</div>
+</div>
+
+<!-- ═══ MOBILE BOTTOM TAB BAR (only shown ≤768px) ═══ -->
+<div id="mobileTabBar">
+  <button class="tab active" data-tab="map" onclick="navTo('map')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
+    <span>Map</span>
+  </button>
+  <button class="tab" data-tab="impact" onclick="navTo('impact')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+    <span>Impact</span>
+  </button>
+  <button class="tab" data-tab="leaderboard" onclick="navTo('leaderboard')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+    <span>Top</span>
+  </button>
+  <button class="tab" data-tab="chat" onclick="navTo('chat')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    <span>AI</span>
+  </button>
+  <button class="tab" data-tab="profile" onclick="navTo('profile')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    <span>Me</span>
+  </button>
+</div>
+
+<!-- ═══ MODE TOGGLE (Citizen / Planner) ═══ -->
+<div id="modeToggle" title="Switch between personal and city-planner views">
+  <button class="mt-btn active" id="mtCitizen" onclick="ecoSwitchMode('citizen')">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    Citizen
+  </button>
+  <button class="mt-btn" id="mtPlanner" onclick="ecoSwitchMode('planner')">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/></svg>
+    Planner
+  </button>
+</div>
+
+<!-- ═══ TODAY'S SCHEDULE CARD ═══ -->
+<div id="todayCard">
+  <div class="tc-head">
+    <div>
+      <div class="tc-title">Today's Schedule</div>
+    </div>
+    <div class="tc-time" id="tcTime">--:--</div>
+  </div>
+  <div id="tcRows"></div>
+  <button class="tc-add" onclick="ecoOpenScheduleModal()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    Add a schedule
+  </button>
+</div>
+
+<!-- ═══ PROACTIVE AGENT TOAST (the "WOW" moment) ═══ -->
+<div id="proactiveToast">
+  <div class="pt-head">
+    <span class="dot"></span>
+    EcoFlow Proactive Agent
+  </div>
+  <div class="pt-msg" id="ptMsg">Heads up — checking your schedule…</div>
+  <div class="pt-meta" id="ptMeta"></div>
+  <div class="pt-actions">
+    <button class="pt-dismiss" onclick="ecoDismissToast()">Dismiss</button>
+    <button class="pt-accept" id="ptAccept" onclick="ecoAcceptToast()">Use this plan</button>
+  </div>
+</div>
+
+<!-- ═══ SCHEDULE ADD/EDIT MODAL ═══ -->
+<div class="modal-backdrop" id="scheduleModal" onclick="if(event.target===this)ecoCloseScheduleModal()">
+  <div class="modal-card">
+    <h3>New commute schedule</h3>
+    <p class="sub">EcoFlow's Proactive Agent will check the weather and traffic 30 minutes before — and ping you with the greenest plan.</p>
+
+    <label>Label</label>
+    <input type="text" id="smLabel" placeholder="e.g. Office, Class, Pickup mum" maxlength="40"/>
+
+    <label>From → To</label>
+    <div style="display:flex; gap:8px;">
+      <input type="text" id="smFromName" placeholder="From (e.g. Home)" style="flex:1"/>
+      <input type="text" id="smToName" placeholder="To (e.g. Office)" style="flex:1"/>
+    </div>
+    <div style="display:flex; gap:8px; margin-top:6px;">
+      <button class="actions" type="button" onclick="ecoUseRouteEndpoints()" style="background:transparent; border:1px solid var(--border); color:var(--text2); padding:6px 10px; border-radius:6px; font-size:11px; cursor:pointer; font-family:var(--font);">Use current map route</button>
+    </div>
+
+    <label>Departure time (Malaysia time)</label>
+    <input type="time" id="smTime" value="07:30"/>
+
+    <label>Repeat</label>
+    <select id="smRepeat" onchange="ecoOnRepeatChange()">
+      <option value="weekdays">Every weekday (Mon–Fri)</option>
+      <option value="daily">Every day</option>
+      <option value="custom">Custom days</option>
+      <option value="once">Just once</option>
+    </select>
+
+    <div id="smRepeatDaysWrap" style="display:none">
+      <label>Days</label>
+      <div class="repeat-grid">
+        <label><input type="checkbox" value="0">Mon</label>
+        <label><input type="checkbox" value="1">Tue</label>
+        <label><input type="checkbox" value="2">Wed</label>
+        <label><input type="checkbox" value="3">Thu</label>
+        <label><input type="checkbox" value="4">Fri</label>
+        <label><input type="checkbox" value="5">Sat</label>
+        <label><input type="checkbox" value="6">Sun</label>
+      </div>
+    </div>
+
+    <div id="smOneOffWrap" style="display:none">
+      <label>Date</label>
+      <input type="date" id="smDate"/>
+    </div>
+
+    <label>Usual transport (optional)</label>
+    <select id="smPreferred">
+      <option value="">Let EcoFlow decide</option>
+      <option>Drive</option>
+      <option>Carpool</option>
+      <option>Motorcycle</option>
+      <option>Grab / E-hailing</option>
+      <option>Bus / RapidKL</option>
+      <option>MRT / LRT</option>
+      <option>Park &amp; Ride</option>
+      <option>Park &amp; Walk</option>
+      <option>Cycling</option>
+      <option>Walking</option>
+    </select>
+
+    <div class="actions">
+      <button class="secondary" onclick="ecoCloseScheduleModal()">Cancel</button>
+      <button class="primary" onclick="ecoSaveSchedule()">Save schedule</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ PLANNER MODE PANEL ═══ -->
+<div id="plannerPanel">
+  <div class="pp-head">
+    <h3>City Planner Mode</h3>
+    <span class="pp-tag">B2B / B2G</span>
+  </div>
+  <div class="pp-body">
+    <p style="font-size:12px;color:var(--text2);line-height:1.5;margin-bottom:12px">
+      Score any candidate location for opening a small business, evaluating
+      a residential development, or finding a "carbon-saving gap" in a
+      neighbourhood. <strong>Tap the map</strong> to set the analysis point,
+      then run.
+    </p>
+
+    <div class="pp-form">
+      <label>Latitude</label>
+      <input type="text" id="ppLat" placeholder="e.g. 3.1390"/>
+      <label>Longitude</label>
+      <input type="text" id="ppLon" placeholder="e.g. 101.6869"/>
+
+      <label>Business / amenity type</label>
+      <select id="ppType">
+        <option value="cafe">Cafe / Coffee shop</option>
+        <option value="mamak">Mamak / Restaurant</option>
+        <option value="grocery">Grocery / Supermarket</option>
+        <option value="convenience_store">Convenience store</option>
+        <option value="clinic">Clinic / Pharmacy</option>
+        <option value="other">Other</option>
+      </select>
+
+      <label>View</label>
+      <select id="ppView">
+        <option value="merchant">Merchant — should I open here?</option>
+        <option value="resident">Resident / Council — what's this neighbourhood missing?</option>
+        <option value="developer">Developer — does this site reduce car dependence?</option>
+      </select>
+
+      <label>Radius (km)</label>
+      <input type="text" id="ppRadius" value="1.0"/>
+
+      <button class="pp-run" onclick="ecoRunSiteAnalysis()">Analyse site</button>
+    </div>
+
+    <div id="ppResultWrap" class="pp-result" style="display:none"></div>
+
+    <div class="pp-privacy">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      Privacy: aggregated &amp; k≥5 anonymised. PDPA 2010 / 2024 aligned.
+    </div>
+  </div>
 </div>
 
 <!-- ═══ TOP SEARCH BAR ═══ -->
@@ -1223,14 +1837,10 @@ body.side-panel-open #searchWrap {
     </div>
     <button class="ph-close" onclick="closeSidePanel()">✕</button>
   </div>
-  <!-- Agent Toggle -->
-  <div class="agent-toggle">
-    <button class="agent-btn active" id="btnGenkit" onclick="switchAgent('genkit')">
-      🔥 Genkit Agent<span class="agent-badge genkit">RAG</span>
-    </button>
-    <button class="agent-btn" id="btnVertex" onclick="switchAgent('vertex')">
-      ✦ Vertex Agent<span class="agent-badge vertex">Pro</span>
-    </button>
+  <!-- Single agent: Firebase Genkit + Vertex AI Search RAG -->
+  <div style="padding:8px 16px; font-size:11px; color:var(--text3); display:flex; align-items:center; gap:6px; border-bottom:1px solid var(--border)">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>
+    Firebase Genkit Agent · grounded by Vertex AI Search (NETR, RapidKL, MoT)
   </div>
   <div class="chat-wrap">
     <div class="chat-msgs" id="chatMsgs">
@@ -4070,26 +4680,10 @@ function shortName(id) {
   return parts.length >= 2 ? parts[1].charAt(0).toUpperCase() + parts[1].slice(1, 8) : id.slice(0, 12);
 }
 
-// ── Agent Toggle ──────────────────────────────────────────
-let ACTIVE_AGENT = 'genkit'; // 'genkit' | 'vertex'
-
-function switchAgent(agent) {
-  ACTIVE_AGENT = agent;
-  document.getElementById('btnGenkit').classList.toggle('active', agent === 'genkit');
-  document.getElementById('btnVertex').classList.toggle('active', agent === 'vertex');
-
-  const sub = document.getElementById('chatAgentSub');
-  const msgs = document.getElementById('chatMsgs');
-
-  if (agent === 'genkit') {
-    sub.textContent = 'Powered by Firebase Genkit + Gemini';
-    msgs.innerHTML += `<div class="chat-msg ai">🔥 Switched to <strong>Genkit Agent</strong> — RAG-grounded with Malaysia policy data.</div>`;
-  } else {
-    sub.textContent = 'Powered by Vertex AI Agent Builder + Gemini 2.5 Pro';
-    msgs.innerHTML += `<div class="chat-msg ai">✦ Switched to <strong>Vertex AI Agent</strong> — Gemini 2.5 Pro with Google Search grounding.</div>`;
-  }
-  msgs.scrollTop = msgs.scrollHeight;
-}
+// ── Agent (Single-agent: Firebase Genkit; Vertex Agent Builder removed
+// per FAQ rule "you only need to choose one of Vertex Agent vs Genkit") ──
+let ACTIVE_AGENT = 'genkit';
+function switchAgent(_) { /* no-op kept for backwards compat */ }
 
 async function sendChat() {
   if (!USER) return;
@@ -4101,16 +4695,13 @@ async function sendChat() {
   const msgs = document.getElementById('chatMsgs');
   msgs.innerHTML += `<div class="chat-msg user">${escHtml(msg)}</div>`;
 
-  // Show which agent is thinking
-  const agentLabel = ACTIVE_AGENT === 'vertex' ? '✦ Vertex Agent' : '🔥 Genkit Agent';
-  msgs.innerHTML += `<div class="chat-msg ai" id="chatTyping" style="opacity:.5">${agentLabel} thinking…</div>`;
+  msgs.innerHTML += `<div class="chat-msg ai" id="chatTyping" style="opacity:.5">🔥 Genkit Agent thinking…</div>`;
   msgs.scrollTop = msgs.scrollHeight;
 
   try {
-    // Choose endpoint based on active agent
-    const endpoint = ACTIVE_AGENT === 'vertex'
-      ? `${API}/api/v1/vertex-agent`
-      : `${API}/api/v1/agent`;
+    // We standardised on Firebase Genkit as the single agentic orchestrator
+    // (per FAQ: "You only need to choose one"). Vertex Agent Builder removed.
+    const endpoint = `${API}/api/v1/agent`;
 
     const r = await fetch(endpoint, {
       method:'POST', headers:{'Content-Type':'application/json'},
@@ -4119,12 +4710,16 @@ async function sendChat() {
     const d = await r.json();
     const typing = document.getElementById('chatTyping');
 
-    // Show agent source badge in reply
-    const sourceBadge = d.agent === 'Vertex AI Agent Builder'
-      ? `<span style="font-size:10px;opacity:.6;display:block;margin-top:4px">✦ Vertex AI Agent Builder · Gemini 2.5 Pro</span>`
-      : `<span style="font-size:10px;opacity:.6;display:block;margin-top:4px">🔥 Firebase Genkit · ${d.model || 'Gemini'}</span>`;
+    // Surface agent + tools used + RAG citations
+    const toolsUsed = Array.isArray(d.tools_used) && d.tools_used.length
+      ? `<div style="font-size:10px;opacity:.6;display:block;margin-top:4px">🔧 ${d.tools_used.join(' → ')}</div>`
+      : '';
+    const sourceBadge =
+      `<div style="font-size:10px;opacity:.6;display:block;margin-top:4px">🔥 Firebase Genkit · ${d.model || 'Gemini'}</div>`;
+    const citations = ecoRenderCitations(d.citations || []);
 
-    if (typing) typing.outerHTML = `<div class="chat-msg ai">${escHtml(d.reply || 'No reply')}${sourceBadge}</div>`;
+    if (typing) typing.outerHTML =
+      `<div class="chat-msg ai">${escHtml(d.reply || 'No reply')}${citations}${toolsUsed}${sourceBadge}</div>`;
   } catch(e) {
     const typing = document.getElementById('chatTyping');
     if (typing) typing.outerHTML = `<div class="chat-msg ai">Sorry, couldn't reach the server. Please try again.</div>`;
@@ -4687,16 +5282,366 @@ if (searchCardEl) {
   }).observe(searchCardEl);
 }
 
+/* ═══════════════════════════════════════════════════════════════════════
+   v3 JS — Schedule, Proactive Toast, Mode Toggle, Planner, Citations
+   Self-contained module that namespaces under `eco*` to avoid clashes.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+// ─── Citation chips (rendered under chat replies) ───
+function ecoRenderCitations(citations) {
+  if (!Array.isArray(citations) || citations.length === 0) return '';
+  const chips = citations.slice(0, 3).map((c, i) => {
+    const title = (c.title || `Source ${i+1}`).replace(/[<>"]/g, '');
+    const tip   = (c.snippet || '').replace(/[<>"]/g, '');
+    const href  = c.uri && /^https?:/.test(c.uri) ? c.uri : '#';
+    return `<a class="citation-chip" href="${href}" target="_blank" rel="noopener" title="${tip}">📄 ${title.slice(0,42)}</a>`;
+  }).join('');
+  return `<div class="citation-chips">${chips}</div>`;
+}
+
+// ─── Mobile bottom tab bar — sync active state with navTo() ───
+function ecoSyncMobileTab(tab) {
+  const bar = document.getElementById('mobileTabBar');
+  if (!bar) return;
+  bar.querySelectorAll('.tab').forEach(b =>
+    b.classList.toggle('active', b.dataset.tab === tab));
+}
+// Hook navTo to also update the bottom tab bar
+(function() {
+  const _origNavTo = window.navTo;
+  if (typeof _origNavTo === 'function') {
+    window.navTo = function(tab) {
+      _origNavTo(tab);
+      ecoSyncMobileTab(tab);
+    };
+  }
+})();
+
+// ─── Citizen / Planner mode toggle ───
+let ECO_MODE = 'citizen';   // 'citizen' | 'planner'
+
+function ecoSwitchMode(mode) {
+  ECO_MODE = mode;
+  document.body.classList.toggle('planner-mode', mode === 'planner');
+  document.getElementById('mtCitizen').classList.toggle('active', mode === 'citizen');
+  document.getElementById('mtPlanner').classList.toggle('active', mode === 'planner');
+
+  if (mode === 'planner') {
+    // Hide today card in planner mode
+    const t = document.getElementById('todayCard');
+    if (t) t.classList.remove('show');
+    // Wire map clicks → planner lat/lon inputs (one-off)
+    if (window.map && !window._ecoPlannerHooked) {
+      window.map.on('click', (e) => {
+        if (ECO_MODE !== 'planner') return;
+        document.getElementById('ppLat').value = e.latlng.lat.toFixed(5);
+        document.getElementById('ppLon').value = e.latlng.lng.toFixed(5);
+      });
+      window._ecoPlannerHooked = true;
+    }
+    ecoShowDemoToast('Tap anywhere on the map to set the analysis point');
+  } else {
+    // Restore today card
+    ecoLoadTodaySchedule();
+  }
+}
+
+// ─── Schedule modal: open/close + form helpers ───
+function ecoOpenScheduleModal() {
+  // Default the date to today
+  const t = new Date();
+  document.getElementById('smDate').value =
+    t.toISOString().slice(0, 10);
+  document.getElementById('scheduleModal').classList.add('open');
+}
+function ecoCloseScheduleModal() {
+  document.getElementById('scheduleModal').classList.remove('open');
+}
+function ecoOnRepeatChange() {
+  const v = document.getElementById('smRepeat').value;
+  document.getElementById('smRepeatDaysWrap').style.display = (v === 'custom') ? 'block' : 'none';
+  document.getElementById('smOneOffWrap').style.display    = (v === 'once')   ? 'block' : 'none';
+}
+function ecoUseRouteEndpoints() {
+  // If the user has set a route on the map, lift its start/end into the modal
+  const startInput = document.getElementById('iStart');
+  const endInput   = document.getElementById('iEnd');
+  if (startInput && startInput.value) document.getElementById('smFromName').value = startInput.value;
+  if (endInput   && endInput.value)   document.getElementById('smToName').value   = endInput.value;
+  ecoShowDemoToast('Endpoint names copied — ensure the map route is also set.');
+}
+
+async function ecoSaveSchedule() {
+  if (!USER || !USER.id) {
+    ecoShowDemoToast('Please log in first.');
+    return;
+  }
+  // Pull start/end coords from the map's currently-set route. The
+  // routing flow stores them on the global `C` object as C.s and C.e.
+  const cs = (typeof C !== 'undefined' && C && C.s) ? C.s : null;
+  const ce = (typeof C !== 'undefined' && C && C.e) ? C.e : null;
+
+  if (!cs || !ce || cs.lat == null || ce.lat == null) {
+    ecoShowDemoToast('Set a route on the map first (start + end), then add the schedule.');
+    return;
+  }
+
+  const repeat = document.getElementById('smRepeat').value;
+  const repeatDays = [...document.querySelectorAll('#smRepeatDaysWrap input:checked')]
+    .map(c => parseInt(c.value, 10));
+
+  const body = {
+    user_id:        USER.id,
+    label:          document.getElementById('smLabel').value.trim() || 'Untitled',
+    start_lat:      cs.lat,
+    start_lon:      cs.lon,
+    end_lat:        ce.lat,
+    end_lon:        ce.lon,
+    start_name:     document.getElementById('smFromName').value || 'Home',
+    end_name:       document.getElementById('smToName').value   || 'Destination',
+    departure_time: document.getElementById('smTime').value || '07:30',
+    repeat:         repeat,
+    repeat_days:    repeatDays,
+    one_off_date:   repeat === 'once' ? document.getElementById('smDate').value : null,
+    preferred_mode: document.getElementById('smPreferred').value || null,
+  };
+
+  try {
+    const r = await fetch(`${API}/api/v1/schedules`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(body),
+    });
+    if (!r.ok) throw new Error('save failed');
+    ecoCloseScheduleModal();
+    ecoShowDemoToast('✓ Schedule saved — Proactive Agent watching now');
+    ecoLoadTodaySchedule();
+  } catch (e) {
+    ecoShowDemoToast('Could not save schedule: ' + e.message);
+  }
+}
+
+// ─── Today's Schedule card ───
+async function ecoLoadTodaySchedule() {
+  if (!USER || !USER.id) return;
+  if (ECO_MODE === 'planner') return;
+  try {
+    const r = await fetch(`${API}/api/v1/schedules/${USER.id}/today`);
+    if (!r.ok) return;
+    const d = await r.json();
+    ecoRenderTodayCard(d);
+  } catch(e) { /* silent */ }
+}
+
+function ecoRenderTodayCard(payload) {
+  const card  = document.getElementById('todayCard');
+  const rows  = document.getElementById('tcRows');
+  const tcTime = document.getElementById('tcTime');
+  if (!card || !rows) return;
+
+  tcTime.textContent = payload.current_time_my || '--:--';
+
+  if (!payload.schedules || payload.schedules.length === 0) {
+    rows.innerHTML = `<div style="padding:14px 0; color:var(--text3); font-size:12px; text-align:center;">No schedules today. Add one to let the agent watch over your commute.</div>`;
+  } else {
+    rows.innerHTML = payload.schedules.map(s => {
+      const mins = s.minutes_until_departure;
+      const minsLabel = (mins === null || mins === undefined) ? '' :
+        (mins < 0 ? 'past' : (mins < 60 ? `${mins} min` : `${Math.round(mins/60)}h`));
+      const urgent = (typeof mins === 'number' && mins >= 0 && mins <= 60);
+      return `
+        <div class="tc-row">
+          <div class="tc-when">${s.departure_time || '--:--'}</div>
+          <div class="tc-meta">
+            <div class="tc-label">${(s.label||'Untitled').replace(/[<>]/g,'')}</div>
+            <div class="tc-from">${(s.start_name||'').replace(/[<>]/g,'')} → ${(s.end_name||'').replace(/[<>]/g,'')}</div>
+          </div>
+          <div class="tc-mins ${urgent?'urgent':''}">${minsLabel}</div>
+        </div>`;
+    }).join('');
+  }
+  card.classList.add('show');
+}
+
+// ─── Proactive Agent: poll for notifications ───
+let _ecoActiveNotif = null;
+
+async function ecoPollNotifications() {
+  if (!USER || !USER.id) return;
+  try {
+    const r = await fetch(`${API}/api/v1/schedules/notifications/${USER.id}?unread_only=true&limit=5`);
+    if (!r.ok) return;
+    const d = await r.json();
+    if (!d.notifications || d.notifications.length === 0) return;
+
+    // Show the most recent unread, if not already showing
+    const top = d.notifications[0];
+    if (_ecoActiveNotif && _ecoActiveNotif.notif_id === top.notif_id) return;
+    ecoShowProactiveToast(top);
+  } catch(e) { /* silent */ }
+}
+
+function ecoShowProactiveToast(notif) {
+  _ecoActiveNotif = notif;
+  document.getElementById('ptMsg').textContent = notif.message || 'Heads up about your next commute.';
+  const meta = document.getElementById('ptMeta');
+  meta.innerHTML = '';
+  if (notif.recommended_mode) {
+    meta.innerHTML += `<span class="pt-chip green">${escHtml(notif.recommended_mode)}</span>`;
+  }
+  if (typeof notif.recommended_time_mins === 'number') {
+    meta.innerHTML += `<span class="pt-chip">${Math.round(notif.recommended_time_mins)} min</span>`;
+  }
+  if (typeof notif.recommended_carbon_kg === 'number') {
+    meta.innerHTML += `<span class="pt-chip green">${notif.recommended_carbon_kg.toFixed(2)} kg CO₂</span>`;
+  }
+  if (notif.weather && notif.weather.summary) {
+    meta.innerHTML += `<span class="pt-chip">${escHtml(notif.weather.summary)}</span>`;
+  }
+  if (notif.congestion) {
+    meta.innerHTML += `<span class="pt-chip">${escHtml(notif.congestion)} traffic</span>`;
+  }
+  document.getElementById('proactiveToast').classList.add('show');
+}
+
+async function ecoDismissToast() {
+  document.getElementById('proactiveToast').classList.remove('show');
+  if (_ecoActiveNotif && _ecoActiveNotif.notif_id) {
+    try {
+      await fetch(`${API}/api/v1/schedules/notifications/${_ecoActiveNotif.notif_id}/read`, {
+        method:'POST'
+      });
+    } catch(e) {}
+  }
+  _ecoActiveNotif = null;
+}
+
+async function ecoAcceptToast() {
+  if (!_ecoActiveNotif) return ecoDismissToast();
+  try {
+    await fetch(`${API}/api/v1/schedules/notifications/${_ecoActiveNotif.notif_id}/accept`, {
+      method:'POST'
+    });
+  } catch(e) {}
+  ecoShowDemoToast('Acknowledged — see you on the road 🌱');
+  ecoDismissToast();
+}
+
+// ─── Planner Mode: site analysis ───
+async function ecoRunSiteAnalysis() {
+  const lat = parseFloat(document.getElementById('ppLat').value);
+  const lon = parseFloat(document.getElementById('ppLon').value);
+  const radius = parseFloat(document.getElementById('ppRadius').value || '1.0');
+  const business_type = document.getElementById('ppType').value;
+  const view = document.getElementById('ppView').value;
+
+  if (!isFinite(lat) || !isFinite(lon)) {
+    ecoShowDemoToast('Tap the map to set a location, or paste lat/lon.');
+    return;
+  }
+  const wrap = document.getElementById('ppResultWrap');
+  wrap.style.display = 'block';
+  wrap.innerHTML = '<div style="color:var(--text3); font-size:13px; padding:12px 0;">Analysing site… (Gemini is reasoning over foot-traffic, transit, and policy context)</div>';
+
+  try {
+    const r = await fetch(`${API}/api/v1/planner/analyze-site`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({lat, lon, radius_km: radius, business_type, view}),
+    });
+    const d = await r.json();
+    ecoRenderSiteResult(d);
+  } catch(e) {
+    wrap.innerHTML = `<div style="color:var(--red);font-size:13px;">Analysis failed: ${e.message}</div>`;
+  }
+}
+
+function ecoRenderSiteResult(d) {
+  const wrap = document.getElementById('ppResultWrap');
+  const score = d.site_score || 0;
+  const scoreCls = score >= 70 ? '' : (score >= 40 ? 'mid' : 'bad');
+  const ft = d.foot_traffic || {};
+  const tr = d.transit || {};
+  const carbon = d.carbon_saving_estimate || {};
+
+  wrap.innerHTML = `
+    <div class="pp-score">
+      <div class="pp-score-num ${scoreCls}">${score}</div>
+      <div class="pp-score-meta">
+        <div class="lbl">Site Score</div>
+        <div class="val">${d.business_type || ''} · ${d.view || ''}</div>
+      </div>
+    </div>
+    <div class="pp-stats">
+      <div class="pp-stat">
+        <div class="lbl">Foot Traffic</div>
+        <div class="val">${ft.trips_near || 0} <span style="font-size:10px;color:var(--text3)">trips</span></div>
+        <div class="sub">${ft.k_anon_satisfied ? `${ft.distinct_users} unique users` : 'k-anon: suppressed'}</div>
+      </div>
+      <div class="pp-stat">
+        <div class="lbl">Transit</div>
+        <div class="val">${tr.station || '—'}</div>
+        <div class="sub">${tr.distance_km != null ? tr.distance_km + ' km' : 'unknown'} ${tr.walkable ? '· walkable' : ''}</div>
+      </div>
+      <div class="pp-stat">
+        <div class="lbl">Carbon saved / month</div>
+        <div class="val">${carbon.kg_per_month != null ? carbon.kg_per_month + ' kg' : '—'}</div>
+        <div class="sub">${carbon.trees_per_year != null ? carbon.trees_per_year + ' trees / year' : ''}</div>
+      </div>
+      <div class="pp-stat">
+        <div class="lbl">OKU score</div>
+        <div class="val">${d.oku_accessibility_score ?? '—'} / 100</div>
+        <div class="sub">accessibility</div>
+      </div>
+    </div>
+    <div class="pp-narrative">${escHtml(d.narrative || '')}</div>
+    ${d.privacy_note ? `<div style="margin-top:8px;font-size:11px;color:var(--text3)">${escHtml(d.privacy_note)}</div>` : ''}
+  `;
+}
+
+// ─── Demo toast helper ───
+let _ecoToastTimer = null;
+function ecoShowDemoToast(msg) {
+  let t = document.getElementById('ecoDemoToast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'ecoDemoToast';
+    t.className = 'demo-toast';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.display = 'block';
+  clearTimeout(_ecoToastTimer);
+  _ecoToastTimer = setTimeout(() => { t.style.display = 'none'; }, 3500);
+}
+
+// ─── Boot v3 features after the app initialises ───
+function ecoBootV3() {
+  // Wait briefly for USER to populate (login flow)
+  let attempts = 0;
+  const tick = setInterval(() => {
+    attempts++;
+    if (USER && USER.id) {
+      clearInterval(tick);
+      ecoLoadTodaySchedule();
+      ecoPollNotifications();
+      // Poll every 60s for new proactive notifications
+      setInterval(ecoPollNotifications, 60000);
+      // Refresh today card every 5 min so "minutes until" stays current
+      setInterval(ecoLoadTodaySchedule, 5 * 60 * 1000);
+    } else if (attempts > 60) {
+      clearInterval(tick);  // user never logged in (guest skipped)
+    }
+  }, 1000);
+}
+window.addEventListener('load', ecoBootV3);
+
+// Make map.invalidateSize work properly across resizes (mobile)
+window.addEventListener('load', () => {
+  setTimeout(() => { if (window.map) window.map.invalidateSize(); }, 500);
+});
+window.addEventListener('resize', () => {
+  if (window.map) window.map.invalidateSize();
+});
+
 </script>
 </body>
 </html>
-
-window.addEventListener('load', () => {
-  setTimeout(() => {
-    map.invalidateSize();
-  }, 500);
-});
-
-window.addEventListener('resize', () => {
-  map.invalidateSize();
-});
