@@ -3,12 +3,14 @@ fastapi>=0.110.0
 uvicorn[standard]>=0.27.0
 pydantic>=2.5.0
 python-dotenv>=1.0.0
+# multipart parser for file uploads (Mikro SSM cert verification)
+python-multipart>=0.0.9
 
 # ── HTTP / utilities ──
 requests>=2.31.0
 
 # ── Google AI Ecosystem Stack (Technical Mandate) ──
-# 1. The Intelligence (Brain): Gemini with function-calling
+# 1. The Intelligence (Brain): Gemini 2.5 Flash with function-calling + Vision
 google-generativeai>=0.8.0
 # 2. The Orchestrator: Firebase Genkit (agentic flow orchestration)
 genkit>=0.5.0
@@ -17,4 +19,4 @@ google-cloud-discoveryengine>=0.13.0
 
 # ── Firebase (auth + Firestore persistence) ──
 firebase-admin>=6.4.0
-google-cloud-dialogflow-cx>=1.26.0
+
