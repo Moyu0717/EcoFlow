@@ -1443,6 +1443,106 @@ body.planner-mode #plannerPanel{ display:flex !important; }
 @media (max-width: 768px){
   .demo-toast{ bottom:80px; }
 }
+
+/* ─── Location-picker button (used in schedule modal) ────────────── */
+.loc-pick-btn{
+  width:100%;
+  display:flex; align-items:center; gap:10px;
+  padding:11px 12px;
+  background:var(--card); border:1px solid var(--border);
+  border-radius:8px;
+  color:var(--text); font-size:14px; font-family:var(--font);
+  cursor:pointer; text-align:left;
+}
+.loc-pick-btn:hover{ border-color:var(--accent); }
+.loc-pick-btn.set{ border-color:var(--accent); color:var(--text); }
+.loc-pick-btn.set svg{ color:var(--accent); }
+.loc-pick-btn:not(.set) span{ color:var(--text3); }
+
+/* ─── Location picker quick-list items ───────────────────────────── */
+.lp-quick{
+  display:flex; align-items:center; gap:10px;
+  padding:10px 12px; border-radius:8px;
+  background:var(--card); border:1px solid var(--border);
+  cursor:pointer; transition:all .15s;
+}
+.lp-quick:hover{ background:var(--card2); border-color:var(--accent); }
+.lp-quick svg{ color:var(--accent); flex-shrink:0; }
+.lp-quick .lp-q-title{ font-weight:600; color:var(--text); font-size:13px; }
+.lp-quick .lp-q-sub{ font-size:11px; color:var(--text3); }
+.lp-result{
+  padding:8px 12px; border-radius:6px;
+  background:var(--card); border:1px solid var(--border);
+  cursor:pointer; font-size:13px; color:var(--text);
+}
+.lp-result:hover{ background:var(--card2); border-color:var(--accent); }
+
+/* ─── OKU access-need pill (signup) ──────────────────────────────── */
+.oku-need-pill{
+  display:flex; align-items:center; gap:5px;
+  padding:5px 10px;
+  background:var(--card2); border:1px solid var(--border);
+  border-radius:99px; cursor:pointer;
+  font-size:11px; color:var(--text); font-weight:500;
+}
+.oku-need-pill input{ accent-color: var(--purple); }
+.oku-need-pill:has(input:checked){
+  background:var(--purple-bg); color:var(--purple); border-color:var(--purple);
+}
+
+/* ─── Business account: hide all Citizen-only UI ────────────────── */
+body.acct-business #leftPanel,
+body.acct-business #searchWrap,
+body.acct-business #todayCard,
+body.acct-business #proactiveToast,
+body.acct-business #panelLB,
+body.acct-business #panelImpact,
+body.acct-business #panelCarpool,
+body.acct-business #railLB,
+body.acct-business #railImpact,
+body.acct-business #railCarpool,
+body.acct-business #mobileTabBar [data-personal-only]{
+  display:none !important;
+}
+/* Business: planner panel always shown */
+body.acct-business #plannerPanel{
+  display:flex !important;
+}
+/* Business gets a small badge */
+body.acct-business .rail-avatar::after{
+  content:"BIZ";
+  position:absolute;
+  bottom:-2px; right:-4px;
+  background:var(--orange); color:#fff;
+  font-size:8px; font-weight:800;
+  padding:1px 4px; border-radius:4px;
+  letter-spacing:0.05em;
+}
+
+/* ─── Business verification status chip (shown in profile) ───────── */
+.biz-status-chip{
+  display:inline-flex; align-items:center; gap:6px;
+  padding:4px 10px; border-radius:99px;
+  font-size:11px; font-weight:700; letter-spacing:0.04em;
+}
+.biz-status-chip.verified{ background:var(--accent-bg); color:var(--accent); }
+.biz-status-chip.pending { background:var(--orange-bg); color:var(--orange); }
+.biz-status-chip.mikro   { background:var(--purple-bg); color:var(--purple); }
+
+/* ─── Carpool result card (find tab) ─────────────────────────────── */
+.cp-result-card{
+  background:var(--card); border:1px solid var(--border);
+  border-radius:10px; padding:12px; margin-bottom:8px;
+}
+.cp-result-card.oku-match{ border-color:var(--purple); border-left-width:3px; }
+.cp-result-card .cp-row{
+  display:flex; justify-content:space-between; align-items:center;
+  margin-bottom:6px;
+}
+.cp-result-card .cp-name{ font-weight:700; font-size:14px; color:var(--text); }
+.cp-result-card .cp-time{ font-family:var(--mono); font-size:13px; color:var(--accent); font-weight:700; }
+.cp-result-card .cp-meta{ font-size:11px; color:var(--text3); }
+.cp-result-card .cp-chips{ display:flex; flex-wrap:wrap; gap:4px; margin-top:6px; }
 </style>
 </head>
 <body>
@@ -1458,15 +1558,83 @@ body.planner-mode #plannerPanel{ display:flex !important; }
     <div class="auth-title">Welcome to EcoFlow</div>
     <div class="auth-sub">Smart commute decisions for Malaysian cities. Track your eco-impact and save money.</div>
 
+    <!-- Action: Log in / Sign up -->
     <div class="auth-tabs">
-      <button class="auth-tab active" id="tabLogin" onclick="authSwitch('login')">Log in</button>
-      <button class="auth-tab" id="tabSignup" onclick="authSwitch('signup')">Sign up</button>
+      <button class="auth-tab active" id="tabLogin"  onclick="authSwitch('login')">Log in</button>
+      <button class="auth-tab"        id="tabSignup" onclick="authSwitch('signup')">Sign up</button>
     </div>
 
+    <!-- Account type: Personal / Business (only shown on Sign up) -->
+    <div id="acctTypeWrap" style="display:none">
+      <div class="auth-tabs" style="margin-top:0; margin-bottom:8px; background:var(--card2)">
+        <button class="auth-tab active" id="tabPersonal" onclick="authSetAcctType('personal')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          Personal
+        </button>
+        <button class="auth-tab"        id="tabBusiness" onclick="authSetAcctType('business')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/></svg>
+          Business
+        </button>
+      </div>
+      <div id="acctTypeHint" style="font-size:11px; color:var(--text3); margin-bottom:10px; line-height:1.4">
+        Personal accounts get the commute Citizen Mode. Business accounts get the city-Planner Mode after SSM verification.
+      </div>
+    </div>
+
+    <!-- Personal-specific signup fields -->
     <div id="authSignupFields" style="display:none">
       <div class="auth-field">
         <label class="auth-label">Your name</label>
         <input class="auth-input" id="aName" placeholder="e.g. Ahmad Razak" maxlength="40"/>
+      </div>
+      <div class="auth-field">
+        <label class="auth-label" style="display:flex; align-items:center; gap:8px">
+          <input type="checkbox" id="aIsOku" style="accent-color:var(--accent)"/>
+          <span style="text-transform:none; letter-spacing:0; color:var(--text); font-weight:500">I am a person with disability (OKU)</span>
+        </label>
+        <div id="aOkuNeedsWrap" style="display:none; margin-top:8px">
+          <div style="font-size:11px; color:var(--text3); margin-bottom:6px">Access needs (helps us match you with OKU-friendly carpool providers)</div>
+          <div style="display:flex; flex-wrap:wrap; gap:6px">
+            <label class="oku-need-pill"><input type="checkbox" value="wheelchair">Wheelchair</label>
+            <label class="oku-need-pill"><input type="checkbox" value="visual">Visual</label>
+            <label class="oku-need-pill"><input type="checkbox" value="hearing">Hearing</label>
+            <label class="oku-need-pill"><input type="checkbox" value="mobility_aid">Mobility aid</label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Business-specific signup fields -->
+    <div id="authBusinessFields" style="display:none">
+      <div class="auth-field">
+        <label class="auth-label">Business name</label>
+        <input class="auth-input" id="bName" placeholder="e.g. Pak Ali's Mamak" maxlength="60"/>
+      </div>
+      <div class="auth-field">
+        <label class="auth-label">Business type</label>
+        <select class="auth-input" id="bType">
+          <option value="cafe">Cafe / Coffee shop</option>
+          <option value="mamak">Mamak / Restaurant</option>
+          <option value="grocery">Grocery / Supermarket</option>
+          <option value="convenience_store">Convenience store</option>
+          <option value="clinic">Clinic / Pharmacy</option>
+          <option value="developer">Property developer</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="auth-field">
+        <label class="auth-label">SSM registration number</label>
+        <input class="auth-input" id="bSSM" placeholder="e.g. 202401012345 or PG0123456-A" maxlength="20"/>
+      </div>
+      <div class="auth-field">
+        <label class="auth-label">SSM certificate <span style="text-transform:none;letter-spacing:0;color:var(--text3);font-weight:500">— Gemini Vision will read it</span></label>
+        <div class="upload-zone" id="bSSMDrop" onclick="document.getElementById('bSSMFile').click()">
+          <input type="file" id="bSSMFile" accept="image/*,application/pdf" onchange="authPreviewSSM(this)"/>
+          <div class="uz-msg" id="bSSMMsg"><strong>Tap to upload</strong> a photo of your SSM cert<br><span style="font-size:11px;color:var(--text3)">JPG / PNG / PDF · up to 8 MB</span></div>
+        </div>
+      </div>
+      <div style="font-size:11px; color:var(--text3); margin: 4px 0 8px; line-height:1.4">
+        We'll cross-check the cert via SSM &amp; SME Corp Malaysia infrastructure. Mikro businesses (annual revenue &lt; RM 300k <em>or</em> &lt; 5 employees) get Planner Mode <strong>free</strong>.
       </div>
     </div>
 
@@ -1492,7 +1660,7 @@ body.planner-mode #plannerPanel{ display:flex !important; }
     Continue with Google
   </button>
 
-    <button class="auth-guest" onclick="authGuest()">Continue as guest</button>
+    <button class="auth-guest" onclick="authGuest()">Continue as guest (Personal)</button>
 
     <div class="auth-footer" id="aFooter">
       Need an account? <span onclick="authSwitch('signup')" style="cursor:pointer">Create one</span>
@@ -1517,6 +1685,10 @@ body.planner-mode #plannerPanel{ display:flex !important; }
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
     <span class="rail-tt">Leaderboard</span>
   </button>
+  <button class="rail-item" id="railCarpool" onclick="navTo('carpool')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    <span class="rail-tt">Carpool</span>
+  </button>
   <button class="rail-item" id="railChat" onclick="navTo('chat')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
     <span class="rail-tt">AI Chat</span>
@@ -1535,13 +1707,13 @@ body.planner-mode #plannerPanel{ display:flex !important; }
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
     <span>Map</span>
   </button>
-  <button class="tab" data-tab="impact" onclick="navTo('impact')">
+  <button class="tab" data-tab="carpool" onclick="navTo('carpool')" data-personal-only>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    <span>Pool</span>
+  </button>
+  <button class="tab" data-tab="impact" onclick="navTo('impact')" data-personal-only>
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
     <span>Impact</span>
-  </button>
-  <button class="tab" data-tab="leaderboard" onclick="navTo('leaderboard')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
-    <span>Top</span>
   </button>
   <button class="tab" data-tab="chat" onclick="navTo('chat')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
@@ -1553,8 +1725,8 @@ body.planner-mode #plannerPanel{ display:flex !important; }
   </button>
 </div>
 
-<!-- ═══ MODE TOGGLE (Citizen / Planner) ═══ -->
-<div id="modeToggle" title="Switch between personal and city-planner views">
+<!-- ═══ MODE TOGGLE — auto-managed by account_type, hidden by default ═══ -->
+<div id="modeToggle" style="display:none">
   <button class="mt-btn active" id="mtCitizen" onclick="ecoSwitchMode('citizen')">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
     Citizen
@@ -1603,14 +1775,17 @@ body.planner-mode #plannerPanel{ display:flex !important; }
     <label>Label</label>
     <input type="text" id="smLabel" placeholder="e.g. Office, Class, Pickup mum" maxlength="40"/>
 
-    <label>From → To</label>
-    <div style="display:flex; gap:8px;">
-      <input type="text" id="smFromName" placeholder="From (e.g. Home)" style="flex:1"/>
-      <input type="text" id="smToName" placeholder="To (e.g. Office)" style="flex:1"/>
-    </div>
-    <div style="display:flex; gap:8px; margin-top:6px;">
-      <button class="actions" type="button" onclick="ecoUseRouteEndpoints()" style="background:transparent; border:1px solid var(--border); color:var(--text2); padding:6px 10px; border-radius:6px; font-size:11px; cursor:pointer; font-family:var(--font);">Use current map route</button>
-    </div>
+    <label>From</label>
+    <button class="loc-pick-btn" id="smFromBtn" onclick="ecoOpenLocPicker('from')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <span id="smFromLabel">Choose starting point…</span>
+    </button>
+
+    <label>To</label>
+    <button class="loc-pick-btn" id="smToBtn" onclick="ecoOpenLocPicker('to')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+      <span id="smToLabel">Choose destination…</span>
+    </button>
 
     <label>Departure time (Malaysia time)</label>
     <input type="time" id="smTime" value="07:30"/>
@@ -1658,7 +1833,26 @@ body.planner-mode #plannerPanel{ display:flex !important; }
 
     <div class="actions">
       <button class="secondary" onclick="ecoCloseScheduleModal()">Cancel</button>
-      <button class="primary" onclick="ecoSaveSchedule()">Save schedule</button>
+      <button class="primary" id="smSaveBtn" onclick="ecoSaveSchedule()">Save schedule</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ LOCATION PICKER (for schedule From/To) ═══ -->
+<div class="modal-backdrop" id="locPicker" onclick="if(event.target===this)ecoCloseLocPicker()">
+  <div class="modal-card" style="max-width:380px">
+    <h3 id="lpTitle">Choose location</h3>
+    <p class="sub" style="margin-bottom:12px">Pick a saved place or search for a new address.</p>
+
+    <div id="lpQuickList" style="display:flex; flex-direction:column; gap:6px; margin-bottom:12px"></div>
+
+    <label>Or search an address</label>
+    <input type="text" id="lpSearch" placeholder="e.g. KLCC, Bangsar, Subang Jaya"
+      oninput="ecoLpSearch(this.value)" autocomplete="off"/>
+    <div id="lpResults" style="margin-top:6px; display:flex; flex-direction:column; gap:4px"></div>
+
+    <div class="actions">
+      <button class="secondary" onclick="ecoCloseLocPicker()">Close</button>
     </div>
   </div>
 </div>
@@ -1812,6 +2006,85 @@ body.planner-mode #plannerPanel{ display:flex !important; }
   </div>
   <div class="panel-scroll pb" id="lbBody">
     <div class="loading-state"><div class="loading-spinner"></div><div class="loading-txt">Loading…</div></div>
+  </div>
+</div>
+
+<!-- ═══ CARPOOL PANEL ═══ -->
+<div class="side-panel" id="panelCarpool">
+  <div class="ph-hd">
+    <div style="flex:1">
+      <div class="ph-title">Carpool</div>
+      <div class="ph-sub">Find or share a ride · OKU-friendly matching</div>
+    </div>
+    <button class="ph-close" onclick="closeSidePanel()">✕</button>
+  </div>
+  <div class="auth-tabs" style="margin:14px 16px 0; padding:4px; display:flex;">
+    <button class="auth-tab active" id="tabCpFind"  onclick="ecoCpSwitch('find')">Find a ride</button>
+    <button class="auth-tab"        id="tabCpOffer" onclick="ecoCpSwitch('offer')">Offer my route</button>
+  </div>
+  <div class="panel-scroll pb" id="carpoolBody">
+    <!-- Find tab -->
+    <div id="cpFindPane" style="padding:14px 16px">
+      <div style="font-size:12px; color:var(--text2); margin-bottom:10px; line-height:1.5">
+        Tap a route on the map first, then come back here. We'll search for users heading the same way.
+      </div>
+      <button onclick="ecoLoadCarpool()" style="width:100%; padding:9px; background:var(--accent); color:#fff; border:0; border-radius:8px; font-weight:700; cursor:pointer; font-family:var(--font); font-size:13px;">
+        Search matches now
+      </button>
+      <div id="cpOkuStrictWrap" style="display:none; margin-top:10px; padding:8px 10px; background:var(--purple-bg); border-radius:8px; font-size:12px; color:var(--purple)">
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer">
+          <input type="checkbox" id="cpOkuStrict" checked style="accent-color:var(--purple)"/>
+          Show <strong>only OKU-friendly</strong> providers
+        </label>
+      </div>
+      <div id="cpFindResults" style="margin-top:14px"></div>
+    </div>
+
+    <!-- Offer tab -->
+    <div id="cpOfferPane" style="padding:14px 16px; display:none">
+      <div style="font-size:12px; color:var(--text2); margin-bottom:10px; line-height:1.5">
+        Publish your route so others can find you. Set a route on the map first.
+      </div>
+
+      <label class="auth-label" style="margin-top:0">Departure time</label>
+      <input type="time" id="cpOfferTime" value="07:30" class="auth-input"/>
+
+      <label class="auth-label">Seats available</label>
+      <select id="cpOfferSeats" class="auth-input">
+        <option value="1">1 seat</option>
+        <option value="2" selected>2 seats</option>
+        <option value="3">3 seats</option>
+        <option value="4">4 seats</option>
+      </select>
+
+      <label class="auth-label">Contact hint</label>
+      <input type="text" id="cpOfferContact" class="auth-input" placeholder="e.g. WhatsApp 012-xxx-xxxx" maxlength="60"/>
+
+      <div style="margin:14px 0 6px; padding:10px; background:var(--purple-bg); border-radius:8px;">
+        <div style="font-size:11px; font-weight:700; color:var(--purple); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:8px">
+          ♿ OKU accessibility (Persons with Disabilities Act 2008)
+        </div>
+        <label style="display:flex; align-items:center; gap:8px; margin-bottom:6px; cursor:pointer; font-size:13px;">
+          <input type="checkbox" id="cpOkuFriendly" style="accent-color:var(--purple)"/>
+          My ride is OKU-friendly
+        </label>
+        <label style="display:flex; align-items:center; gap:8px; margin-bottom:6px; cursor:pointer; font-size:13px;">
+          <input type="checkbox" id="cpWheelchair" style="accent-color:var(--purple)"/>
+          Wheelchair-capable (boot space)
+        </label>
+        <label style="display:flex; align-items:center; gap:8px; margin-bottom:6px; cursor:pointer; font-size:13px;">
+          <input type="checkbox" id="cpRamp" style="accent-color:var(--purple)"/>
+          Ramp available
+        </label>
+      </div>
+
+      <label class="auth-label">Vehicle note (optional)</label>
+      <input type="text" id="cpOfferNote" class="auth-input" placeholder="e.g. Honda CR-V, plenty of boot space" maxlength="80"/>
+
+      <button onclick="ecoCpRegister()" style="width:100%; margin-top:14px; padding:10px; background:var(--accent); color:#fff; border:0; border-radius:8px; font-weight:700; cursor:pointer; font-family:var(--font);">
+        Publish my route
+      </button>
+    </div>
   </div>
 </div>
 
@@ -2996,7 +3269,7 @@ function navTo(tab) {
   // 【修复】：侧栏 rail 项用的是 railLB/railImpact 等缩写，不是 railLeaderboard。
   // 对应表：tab 名称 → HTML id 后缀
   const RAIL_ID_MAP = {
-    map: 'Map', impact: 'Impact', leaderboard: 'LB',
+    map: 'Map', impact: 'Impact', leaderboard: 'LB', carpool: 'Carpool',
     chat: 'Chat', profile: 'Profile', settings: 'Settings'
   };
   const railSuffix = RAIL_ID_MAP[tab] || tab.charAt(0).toUpperCase() + tab.slice(1);
@@ -3016,6 +3289,7 @@ function navTo(tab) {
     if (tab === 'leaderboard') loadLeaderboard();
     if (tab === 'profile') loadProfile();
     if (tab === 'settings') loadSettings();
+    if (tab === 'carpool') ecoLoadCarpool();
   }
 }
 
@@ -3044,6 +3318,7 @@ function step(s) {
       {mode: 'Bus / RapidKL',    lbl: 'Bus',        sub: 'RapidKL · MyBas',   icon: 'bus'},
       {mode: 'MRT / LRT',        lbl: 'Transit',    sub: 'MRT · LRT · KTM',   icon: 'mrt',      klOnly: true},
       {mode: 'Park & Ride',      lbl: 'Park+Ride',  sub: 'Drive to station',  icon: 'parkride', klOnly: true},
+      {mode: 'Park & Walk',      lbl: 'Park+Walk',  sub: 'Skip city traffic', icon: 'parkride', klOnly: true},
       {mode: 'Cycling',          lbl: 'Cycling',    sub: 'Healthy & green',   icon: 'cycle'},
       {mode: 'Walking',          lbl: 'Walking',    sub: 'Zero emissions',    icon: 'walk'},
     ];
@@ -4705,7 +4980,15 @@ async function sendChat() {
 
     const r = await fetch(endpoint, {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({user_id: USER.id, message: msg, language: 'en'}),
+      body: JSON.stringify({
+        user_id: USER.id,
+        message: msg,
+        language: 'en',
+        // Pass cached browser geolocation so the agent can resolve "near me"
+        // without asking the user for coordinates.
+        user_lat: (typeof ecoUserPos === 'object' && ecoUserPos) ? ecoUserPos.lat : null,
+        user_lon: (typeof ecoUserPos === 'object' && ecoUserPos) ? ecoUserPos.lon : null,
+      }),
     });
     const d = await r.json();
     const typing = document.getElementById('chatTyping');
@@ -5352,6 +5635,13 @@ function ecoOpenScheduleModal() {
   const t = new Date();
   document.getElementById('smDate').value =
     t.toISOString().slice(0, 10);
+  // Reset the picker state
+  ecoSchedFrom = null;
+  ecoSchedTo   = null;
+  document.getElementById('smFromBtn').classList.remove('set');
+  document.getElementById('smToBtn').classList.remove('set');
+  document.getElementById('smFromLabel').textContent = 'Choose starting point…';
+  document.getElementById('smToLabel').textContent   = 'Choose destination…';
   document.getElementById('scheduleModal').classList.add('open');
 }
 function ecoCloseScheduleModal() {
@@ -5362,13 +5652,156 @@ function ecoOnRepeatChange() {
   document.getElementById('smRepeatDaysWrap').style.display = (v === 'custom') ? 'block' : 'none';
   document.getElementById('smOneOffWrap').style.display    = (v === 'once')   ? 'block' : 'none';
 }
-function ecoUseRouteEndpoints() {
-  // If the user has set a route on the map, lift its start/end into the modal
-  const startInput = document.getElementById('iStart');
-  const endInput   = document.getElementById('iEnd');
-  if (startInput && startInput.value) document.getElementById('smFromName').value = startInput.value;
-  if (endInput   && endInput.value)   document.getElementById('smToName').value   = endInput.value;
-  ecoShowDemoToast('Endpoint names copied — ensure the map route is also set.');
+
+// ─── Schedule From/To location picker ───
+let ecoSchedFrom = null;   // {lat, lon, name}
+let ecoSchedTo   = null;
+let ecoLpTarget  = null;   // 'from' | 'to'
+let _ecoLpDebounce = null;
+
+function ecoOpenLocPicker(target) {
+  ecoLpTarget = target;
+  document.getElementById('lpTitle').textContent =
+    target === 'from' ? 'Choose starting point' : 'Choose destination';
+  document.getElementById('lpSearch').value = '';
+  document.getElementById('lpResults').innerHTML = '';
+
+  // Populate quick list: current location, Home, Work
+  const list = document.getElementById('lpQuickList');
+  list.innerHTML = `
+    <div class="lp-quick" onclick="ecoLpUseCurrent()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+      <div><div class="lp-q-title">Use current location</div>
+      <div class="lp-q-sub">Browser GPS</div></div>
+    </div>
+    <div class="lp-quick" id="lpHomeRow" onclick="ecoLpUseSaved('home')" style="display:none">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <div><div class="lp-q-title">Home</div>
+      <div class="lp-q-sub" id="lpHomeSub">Saved in profile</div></div>
+    </div>
+    <div class="lp-quick" id="lpWorkRow" onclick="ecoLpUseSaved('work')" style="display:none">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+      <div><div class="lp-q-title">Work / School</div>
+      <div class="lp-q-sub" id="lpWorkSub">Saved in profile</div></div>
+    </div>
+    <div class="lp-quick" onclick="ecoLpUseMapRoute()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="10" r="3"/><path d="M12 22s-8-7.58-8-12a8 8 0 0 1 16 0c0 4.42-8 12-8 12z"/></svg>
+      <div><div class="lp-q-title">From map ${ecoLpTarget === 'from' ? '(start)' : '(end)'}</div>
+      <div class="lp-q-sub">Use the route I set on the map</div></div>
+    </div>
+  `;
+
+  // Show Home/Work rows if profile has them
+  if (ecoUserProfile && ecoUserProfile.home_lat != null) {
+    document.getElementById('lpHomeRow').style.display = 'flex';
+    document.getElementById('lpHomeSub').textContent = `${ecoUserProfile.home_lat.toFixed(4)}, ${ecoUserProfile.home_lon.toFixed(4)}`;
+  }
+  if (ecoUserProfile && ecoUserProfile.work_lat != null) {
+    document.getElementById('lpWorkRow').style.display = 'flex';
+    document.getElementById('lpWorkSub').textContent = `${ecoUserProfile.work_lat.toFixed(4)}, ${ecoUserProfile.work_lon.toFixed(4)}`;
+  }
+
+  document.getElementById('locPicker').classList.add('open');
+}
+
+function ecoCloseLocPicker() {
+  document.getElementById('locPicker').classList.remove('open');
+}
+
+function ecoLpPick(name, lat, lon) {
+  const obj = { name, lat, lon };
+  if (ecoLpTarget === 'from') {
+    ecoSchedFrom = obj;
+    document.getElementById('smFromLabel').textContent = name;
+    document.getElementById('smFromBtn').classList.add('set');
+  } else {
+    ecoSchedTo = obj;
+    document.getElementById('smToLabel').textContent = name;
+    document.getElementById('smToBtn').classList.add('set');
+  }
+  ecoCloseLocPicker();
+}
+
+function ecoLpUseCurrent() {
+  if (!navigator.geolocation) {
+    ecoShowDemoToast('Geolocation not supported in this browser.');
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      ecoLpPick('Current location', pos.coords.latitude, pos.coords.longitude);
+    },
+    err => ecoShowDemoToast('Could not get location: ' + (err.message || 'denied')),
+    { enableHighAccuracy: true, timeout: 8000 }
+  );
+}
+
+function ecoLpUseSaved(which) {
+  if (!ecoUserProfile) return;
+  if (which === 'home' && ecoUserProfile.home_lat != null) {
+    ecoLpPick('Home', ecoUserProfile.home_lat, ecoUserProfile.home_lon);
+  } else if (which === 'work' && ecoUserProfile.work_lat != null) {
+    ecoLpPick('Work', ecoUserProfile.work_lat, ecoUserProfile.work_lon);
+  }
+}
+
+function ecoLpUseMapRoute() {
+  const cs = (typeof C !== 'undefined' && C && C.s) ? C.s : null;
+  const ce = (typeof C !== 'undefined' && C && C.e) ? C.e : null;
+  if (ecoLpTarget === 'from' && cs && cs.lat != null) {
+    ecoLpPick('Route start', cs.lat, cs.lon);
+  } else if (ecoLpTarget === 'to' && ce && ce.lat != null) {
+    ecoLpPick('Route end', ce.lat, ce.lon);
+  } else {
+    ecoShowDemoToast('Set a route on the map first.');
+  }
+}
+
+function ecoLpSearch(q) {
+  q = (q || '').trim();
+  if (q.length < 2) {
+    document.getElementById('lpResults').innerHTML = '';
+    return;
+  }
+  clearTimeout(_ecoLpDebounce);
+  _ecoLpDebounce = setTimeout(() => ecoLpDoSearch(q), 350);
+}
+
+async function ecoLpDoSearch(q) {
+  // Use Mapbox geocoder when token available, fall back to Nominatim
+  try {
+    let results = [];
+    if (typeof window.MAPBOX_TOKEN === 'string' && window.MAPBOX_TOKEN) {
+      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?country=MY&limit=6&access_token=${window.MAPBOX_TOKEN}`;
+      const r = await fetch(url);
+      const d = await r.json();
+      results = (d.features || []).map(f => ({
+        name: f.place_name,
+        lat:  f.center[1],
+        lon:  f.center[0],
+      }));
+    } else {
+      // Nominatim fallback (no key needed)
+      const url = `https://nominatim.openstreetmap.org/search?format=json&limit=6&countrycodes=my&q=${encodeURIComponent(q)}`;
+      const r = await fetch(url, { headers: { 'Accept-Language': 'en' } });
+      const d = await r.json();
+      results = (d || []).map(it => ({
+        name: it.display_name,
+        lat:  parseFloat(it.lat),
+        lon:  parseFloat(it.lon),
+      }));
+    }
+    const html = results.map(r => {
+      const safe = (r.name || '').replace(/[<>"]/g, '');
+      const short = safe.length > 60 ? safe.slice(0, 60) + '…' : safe;
+      return `<div class="lp-result" onclick="ecoLpPick('${safe.replace(/'/g, '&#39;')}', ${r.lat}, ${r.lon})">${short}</div>`;
+    }).join('');
+    document.getElementById('lpResults').innerHTML =
+      html || '<div style="font-size:12px;color:var(--text3)">No matches.</div>';
+  } catch (e) {
+    document.getElementById('lpResults').innerHTML =
+      '<div style="font-size:12px;color:var(--red)">Search failed.</div>';
+  }
 }
 
 async function ecoSaveSchedule() {
@@ -5376,13 +5809,8 @@ async function ecoSaveSchedule() {
     ecoShowDemoToast('Please log in first.');
     return;
   }
-  // Pull start/end coords from the map's currently-set route. The
-  // routing flow stores them on the global `C` object as C.s and C.e.
-  const cs = (typeof C !== 'undefined' && C && C.s) ? C.s : null;
-  const ce = (typeof C !== 'undefined' && C && C.e) ? C.e : null;
-
-  if (!cs || !ce || cs.lat == null || ce.lat == null) {
-    ecoShowDemoToast('Set a route on the map first (start + end), then add the schedule.');
+  if (!ecoSchedFrom || !ecoSchedTo) {
+    ecoShowDemoToast('Pick both a starting point and a destination.');
     return;
   }
 
@@ -5393,12 +5821,12 @@ async function ecoSaveSchedule() {
   const body = {
     user_id:        USER.id,
     label:          document.getElementById('smLabel').value.trim() || 'Untitled',
-    start_lat:      cs.lat,
-    start_lon:      cs.lon,
-    end_lat:        ce.lat,
-    end_lon:        ce.lon,
-    start_name:     document.getElementById('smFromName').value || 'Home',
-    end_name:       document.getElementById('smToName').value   || 'Destination',
+    start_lat:      ecoSchedFrom.lat,
+    start_lon:      ecoSchedFrom.lon,
+    end_lat:        ecoSchedTo.lat,
+    end_lon:        ecoSchedTo.lon,
+    start_name:     ecoSchedFrom.name,
+    end_name:       ecoSchedTo.name,
     departure_time: document.getElementById('smTime').value || '07:30',
     repeat:         repeat,
     repeat_days:    repeatDays,
@@ -5406,24 +5834,32 @@ async function ecoSaveSchedule() {
     preferred_mode: document.getElementById('smPreferred').value || null,
   };
 
+  // Disable button while saving
+  const btn = document.getElementById('smSaveBtn');
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+
   try {
     const r = await fetch(`${API}/api/v1/schedules`, {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify(body),
     });
-    if (!r.ok) throw new Error('save failed');
+    if (!r.ok) throw new Error('save failed (status ' + r.status + ')');
     ecoCloseScheduleModal();
     ecoShowDemoToast('✓ Schedule saved — Proactive Agent watching now');
     ecoLoadTodaySchedule();
   } catch (e) {
     ecoShowDemoToast('Could not save schedule: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Save schedule';
   }
 }
 
 // ─── Today's Schedule card ───
 async function ecoLoadTodaySchedule() {
   if (!USER || !USER.id) return;
-  if (ECO_MODE === 'planner') return;
+  if (ECO_MODE === 'planner' || ecoAccountType === 'business') return;
   try {
     const r = await fetch(`${API}/api/v1/schedules/${USER.id}/today`);
     if (!r.ok) return;
@@ -5613,6 +6049,339 @@ function ecoShowDemoToast(msg) {
   _ecoToastTimer = setTimeout(() => { t.style.display = 'none'; }, 3500);
 }
 
+/* ═══════════════════════════════════════════════════════════════════════
+   v3.1 — Account type, geolocation cache, carpool register/find, auth flow
+   ═══════════════════════════════════════════════════════════════════════ */
+
+// User profile cached client-side (loaded after login)
+let ecoUserProfile = null;            // {home_lat, home_lon, work_lat, work_lon, is_oku, oku_needs}
+let ecoAccountType = 'personal';      // 'personal' | 'business'
+let ecoBizMeta     = null;            // {business_name, ssm_number, tier, is_mikro}
+let ecoUserPos     = null;            // {lat, lon} cached browser geolocation
+let ecoSignupAcctType = 'personal';   // chosen on the auth screen
+let ecoSSMFile     = null;            // pending SSM cert file blob
+
+// ─── Auth: account-type tab switching ───
+function authSetAcctType(t) {
+  ecoSignupAcctType = t;
+  document.getElementById('tabPersonal').classList.toggle('active', t === 'personal');
+  document.getElementById('tabBusiness').classList.toggle('active', t === 'business');
+  document.getElementById('authSignupFields'  ).style.display = (t === 'personal') ? 'block' : 'none';
+  document.getElementById('authBusinessFields').style.display = (t === 'business') ? 'block' : 'none';
+  document.getElementById('acctTypeHint').textContent = (t === 'personal')
+    ? 'Personal accounts get the commute Citizen Mode (route planning, carpool, schedules).'
+    : 'Business accounts get City Planner Mode after SSM verification (Mikro = free).';
+}
+
+function authPreviewSSM(input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  ecoSSMFile = file;
+  const msg = document.getElementById('bSSMMsg');
+  msg.innerHTML = `<strong>${file.name}</strong><br><span style="font-size:11px;color:var(--text3)">${(file.size/1024).toFixed(0)} KB · will be verified by Gemini Vision</span>`;
+}
+
+// Hook into the existing authSwitch so the account-type tabs only show on signup
+(function(){
+  const _origAuthSwitch = window.authSwitch;
+  if (typeof _origAuthSwitch === 'function') {
+    window.authSwitch = function(mode) {
+      _origAuthSwitch(mode);
+      const wrap = document.getElementById('acctTypeWrap');
+      if (wrap) wrap.style.display = (mode === 'signup') ? 'block' : 'none';
+      // On signup, default to personal
+      if (mode === 'signup') authSetAcctType('personal');
+      // Hide both signup field-blocks when in login mode
+      if (mode === 'login') {
+        document.getElementById('authBusinessFields').style.display = 'none';
+      }
+    };
+  }
+})();
+
+// Personal: OKU checkbox toggles the access-needs picker
+document.addEventListener('DOMContentLoaded', () => {
+  const okuBox = document.getElementById('aIsOku');
+  if (okuBox) {
+    okuBox.addEventListener('change', () => {
+      document.getElementById('aOkuNeedsWrap').style.display = okuBox.checked ? 'block' : 'none';
+    });
+  }
+});
+
+// ─── Hook authSubmit to store account_type + (for business) verify SSM ───
+(function(){
+  const _origAuthSubmit = window.authSubmit;
+  if (typeof _origAuthSubmit !== 'function') return;
+  window.authSubmit = async function() {
+    const isSignup = document.getElementById('tabSignup')?.classList.contains('active');
+    if (!isSignup) {
+      _origAuthSubmit();
+      return;
+    }
+    // Signup: pre-validate business-specific fields
+    if (ecoSignupAcctType === 'business') {
+      const bn = document.getElementById('bName').value.trim();
+      const ssm = document.getElementById('bSSM').value.trim();
+      if (!bn) { document.getElementById('aErr').textContent = 'Please enter your business name.'; return; }
+      if (!ssm) { document.getElementById('aErr').textContent = 'Please enter your SSM registration number.'; return; }
+      if (!ecoSSMFile) { document.getElementById('aErr').textContent = 'Please upload your SSM certificate.'; return; }
+    }
+    // Run the original signup (creates Firebase user + stores profile)
+    _origAuthSubmit();
+    // After 2 s, write account-type-specific extras to the backend
+    setTimeout(ecoFinaliseSignup, 2200);
+  };
+})();
+
+async function ecoFinaliseSignup() {
+  if (!USER || !USER.id) return;
+
+  if (ecoSignupAcctType === 'personal') {
+    const isOku = document.getElementById('aIsOku').checked;
+    const needs = [...document.querySelectorAll('#aOkuNeedsWrap input:checked')].map(i => i.value);
+    try {
+      await fetch(`${API}/api/v1/user-profile`, {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          user_id: USER.id,
+          prefer_fast: 0.33, prefer_cheap: 0.33, prefer_green: 0.34,
+          vehicle_type: 'car',
+          is_oku: isOku,
+          oku_needs: needs,
+          contribute_to_planner: false,
+        }),
+      });
+    } catch(e) {}
+    ecoAccountType = 'personal';
+    ecoApplyAccountType();
+    return;
+  }
+
+  // Business signup → register merchant + Vision-verify SSM
+  const bn  = document.getElementById('bName').value.trim();
+  const bt  = document.getElementById('bType').value;
+  const ssm = document.getElementById('bSSM').value.trim();
+  try {
+    await fetch(`${API}/api/v1/planner/merchant/register`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        user_id: USER.id, business_name: bn, business_type: bt,
+        ssm_number: ssm, tier: 'standard',
+      }),
+    });
+    if (ecoSSMFile) {
+      ecoShowDemoToast('Verifying SSM certificate with Gemini Vision…');
+      const form = new FormData();
+      form.append('user_id', USER.id);
+      form.append('file', ecoSSMFile);
+      const r = await fetch(`${API}/api/v1/planner/merchant/verify-mikro`, {
+        method:'POST', body: form,
+      });
+      const d = await r.json();
+      ecoBizMeta = {
+        business_name: bn, business_type: bt,
+        ssm_number: ssm, tier: d.tier || 'pending',
+        is_mikro: d.tier === 'mikro',
+        verified: d.status === 'verified',
+        extracted: d.extracted,
+      };
+      if (d.status === 'verified') {
+        ecoShowDemoToast(`✓ Verified · Mikro tier · free Planner access`);
+      } else {
+        ecoShowDemoToast('Saved for manual review. Continuing as standard tier.');
+      }
+    }
+  } catch(e) {
+    ecoShowDemoToast('Business registration: ' + e.message);
+  }
+  ecoAccountType = 'business';
+  ecoApplyAccountType();
+}
+
+// Apply account-type-driven UI (called on login + after signup)
+function ecoApplyAccountType() {
+  document.body.classList.toggle('acct-business', ecoAccountType === 'business');
+  document.body.classList.toggle('acct-personal', ecoAccountType === 'personal');
+
+  // Personal default → citizen mode visible, planner panel hidden (no toggle shown)
+  // Business default → planner mode visible
+  if (ecoAccountType === 'business') {
+    document.body.classList.add('planner-mode');
+    ECO_MODE = 'planner';
+  } else {
+    document.body.classList.remove('planner-mode');
+    ECO_MODE = 'citizen';
+  }
+}
+
+// ─── Load full profile after login (called from boot) ───
+async function ecoLoadProfile() {
+  if (!USER || !USER.id) return;
+  try {
+    const r = await fetch(`${API}/api/v1/user-profile/${USER.id}`);
+    const d = await r.json();
+    ecoUserProfile = d.profile || null;
+    // Determine account type from profile (if recorded)
+    if (ecoUserProfile && ecoUserProfile.account_type === 'business') {
+      ecoAccountType = 'business';
+    } else {
+      // Also check merchant_profiles → if exists, treat as business
+      try {
+        const m = await fetch(`${API}/api/v1/planner/merchant/${USER.id}`);
+        if (m.ok) {
+          const md = await m.json();
+          if (md && md.business_name) {
+            ecoAccountType = 'business';
+            ecoBizMeta = md;
+          }
+        }
+      } catch(e) {}
+    }
+    ecoApplyAccountType();
+  } catch(e) { /* silent */ }
+}
+
+// ─── Carpool: switch tabs, register, find ───
+function ecoCpSwitch(which) {
+  document.getElementById('tabCpFind' ).classList.toggle('active', which === 'find');
+  document.getElementById('tabCpOffer').classList.toggle('active', which === 'offer');
+  document.getElementById('cpFindPane' ).style.display = (which === 'find')  ? 'block' : 'none';
+  document.getElementById('cpOfferPane').style.display = (which === 'offer') ? 'block' : 'none';
+}
+
+async function ecoLoadCarpool() {
+  if (!USER || !USER.id) return;
+  // If the user is OKU, default the strict-OKU toggle to ON
+  const okuWrap = document.getElementById('cpOkuStrictWrap');
+  if (ecoUserProfile && ecoUserProfile.is_oku) {
+    okuWrap.style.display = 'block';
+    document.getElementById('cpOkuStrict').checked = true;
+  }
+
+  const cs = (typeof C !== 'undefined' && C && C.s) ? C.s : null;
+  const ce = (typeof C !== 'undefined' && C && C.e) ? C.e : null;
+  if (!cs || !ce || cs.lat == null || ce.lat == null) {
+    document.getElementById('cpFindResults').innerHTML =
+      '<div style="color:var(--text3); font-size:13px; padding:16px 0; text-align:center">Set a route on the map first, then come back.</div>';
+    return;
+  }
+
+  document.getElementById('cpFindResults').innerHTML =
+    '<div style="color:var(--text3); font-size:13px; padding:14px 0; text-align:center">Searching matches…</div>';
+
+  try {
+    const r = await fetch(`${API}/api/v1/find-carpool`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        user_id: USER.id,
+        start_lat: cs.lat, start_lon: cs.lon,
+        end_lat: ce.lat, end_lon: ce.lon,
+        max_detour_km: 2.5,
+        requester_is_oku: !!(ecoUserProfile && ecoUserProfile.is_oku),
+        oku_strict: !!(ecoUserProfile && ecoUserProfile.is_oku &&
+                       document.getElementById('cpOkuStrict').checked),
+      }),
+    });
+    const d = await r.json();
+    ecoRenderCarpoolResults(d);
+  } catch(e) {
+    document.getElementById('cpFindResults').innerHTML =
+      '<div style="color:var(--red); font-size:13px">Search failed: ' + e.message + '</div>';
+  }
+}
+
+function ecoRenderCarpoolResults(d) {
+  const wrap = document.getElementById('cpFindResults');
+  const matches = d.matches || [];
+  if (matches.length === 0) {
+    let msg = 'No matches yet — be the first to publish your route!';
+    if (d.oku_strict_active && d.suppressed_non_oku) {
+      msg = `No OKU-friendly matches right now. Hid ${d.suppressed_non_oku} non-accessible offer(s). Untick "Strict OKU" above to see all.`;
+    }
+    wrap.innerHTML = `<div style="color:var(--text3); font-size:13px; padding:14px 0; text-align:center">${msg}</div>`;
+    return;
+  }
+  wrap.innerHTML = matches.map(m => {
+    const okuClass = m.oku_friendly ? ' oku-match' : '';
+    const chips = [];
+    if (m.oku_friendly)        chips.push('<span class="oku-chip">♿ OKU friendly</span>');
+    if (m.wheelchair_capable)  chips.push('<span class="oku-chip">Wheelchair OK</span>');
+    if (m.has_ramp)            chips.push('<span class="oku-chip">Ramp</span>');
+    return `
+      <div class="cp-result-card${okuClass}">
+        <div class="cp-row">
+          <div class="cp-name">${escHtml(m.name || 'Anonymous')}</div>
+          <div class="cp-time">${escHtml(m.departure_time || '?')}</div>
+        </div>
+        <div class="cp-meta">${m.seats_available} seat(s) · detour ${(m.start_diff_km + m.end_diff_km).toFixed(1)} km · save ~RM ${m.estimated_saving_rm}</div>
+        ${m.vehicle_note ? `<div class="cp-meta" style="margin-top:4px">${escHtml(m.vehicle_note)}</div>` : ''}
+        ${chips.length ? `<div class="cp-chips">${chips.join('')}</div>` : ''}
+        <div class="cp-meta" style="margin-top:6px;color:var(--accent);font-weight:600">${escHtml(m.contact_hint || '')}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function ecoCpRegister() {
+  if (!USER || !USER.id) return ecoShowDemoToast('Please log in first.');
+  const cs = (typeof C !== 'undefined' && C && C.s) ? C.s : null;
+  const ce = (typeof C !== 'undefined' && C && C.e) ? C.e : null;
+  if (!cs || !ce || cs.lat == null || ce.lat == null) {
+    return ecoShowDemoToast('Set a route on the map first.');
+  }
+  try {
+    const r = await fetch(`${API}/api/v1/register-carpool`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        user_id: USER.id,
+        name:    USER.name || 'Anonymous',
+        start_lat: cs.lat, start_lon: cs.lon,
+        end_lat:   ce.lat, end_lon:   ce.lon,
+        departure_time: document.getElementById('cpOfferTime').value || '07:30',
+        seats_available: parseInt(document.getElementById('cpOfferSeats').value || '2', 10),
+        contact_hint: document.getElementById('cpOfferContact').value || 'Contact via app',
+        oku_friendly:       document.getElementById('cpOkuFriendly').checked,
+        wheelchair_capable: document.getElementById('cpWheelchair').checked,
+        has_ramp:           document.getElementById('cpRamp').checked,
+        vehicle_note:       document.getElementById('cpOfferNote').value || null,
+      }),
+    });
+    if (!r.ok) throw new Error('status ' + r.status);
+    ecoShowDemoToast('✓ Your carpool offer is live for today');
+    ecoCpSwitch('find');
+  } catch(e) {
+    ecoShowDemoToast('Could not publish: ' + e.message);
+  }
+}
+
+// ─── Try to fetch geolocation for the agent (cached) ───
+function ecoTryGetPosition() {
+  if (ecoUserPos) return Promise.resolve(ecoUserPos);
+  if (!navigator.geolocation) return Promise.resolve(null);
+  return new Promise(resolve => {
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        ecoUserPos = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+        resolve(ecoUserPos);
+      },
+      _ => resolve(null),
+      { enableHighAccuracy: false, timeout: 4000, maximumAge: 5 * 60_000 }
+    );
+  });
+}
+
+// Wrap sendChat so the user's location is auto-attached to the request
+(function(){
+  const _origSendChat = window.sendChat;
+  if (typeof _origSendChat !== 'function') return;
+  window.sendChat = async function() {
+    // Trigger geolocation lazily on first chat use (best-effort, non-blocking)
+    if (!ecoUserPos) ecoTryGetPosition();   // fires permission prompt once
+    return _origSendChat();
+  };
+})();
+
 // ─── Boot v3 features after the app initialises ───
 function ecoBootV3() {
   // Wait briefly for USER to populate (login flow)
@@ -5621,12 +6390,15 @@ function ecoBootV3() {
     attempts++;
     if (USER && USER.id) {
       clearInterval(tick);
-      ecoLoadTodaySchedule();
-      ecoPollNotifications();
-      // Poll every 60s for new proactive notifications
-      setInterval(ecoPollNotifications, 60000);
-      // Refresh today card every 5 min so "minutes until" stays current
-      setInterval(ecoLoadTodaySchedule, 5 * 60 * 1000);
+      // Load profile (needed for OKU + saved Home/Work + account type)
+      ecoLoadProfile().then(() => {
+        ecoLoadTodaySchedule();
+        ecoPollNotifications();
+        // Poll every 60s for new proactive notifications
+        setInterval(ecoPollNotifications, 60000);
+        // Refresh today card every 5 min so "minutes until" stays current
+        setInterval(ecoLoadTodaySchedule, 5 * 60 * 1000);
+      });
     } else if (attempts > 60) {
       clearInterval(tick);  // user never logged in (guest skipped)
     }
