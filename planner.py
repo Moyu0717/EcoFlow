@@ -253,6 +253,26 @@ def merchant_register(req: MerchantRegister):
     return {"status": "saved", "merchant": req.user_id}
 
 
+@planner_router.get("/merchant/{user_id}")
+def merchant_get(user_id: str):
+    """Fetch a merchant's profile (used by the frontend on login to determine account type)."""
+    from main import db
+    doc = db.collection("merchant_profiles").document(user_id).get()
+    if not doc.exists:
+        raise HTTPException(404, "Merchant not found.")
+    d = doc.to_dict()
+    # Sanitise SERVER_TIMESTAMP & similar non-JSON-safe values
+    out = {}
+    for k, v in d.items():
+        if hasattr(v, "isoformat"):
+            out[k] = v.isoformat()
+        elif type(v).__name__ in ("Sentinel", "ServerTimestamp"):
+            continue
+        else:
+            out[k] = v
+    return out
+
+
 @planner_router.post("/merchant/verify-mikro")
 async def verify_mikro_with_vision(
     user_id: str = Form(...),
