@@ -55,6 +55,11 @@ class AgentRequest(BaseModel):
     message: str
     context: Optional[Dict[str, Any]] = None
     language: Optional[str] = "en"
+    # Browser geolocation passed from the frontend so the agent can resolve
+    # phrases like "near me" / "around here" without asking the user
+    # for their lat/lon (which normal users obviously don't know).
+    user_lat: Optional[float] = None
+    user_lon: Optional[float] = None
 
 
 # ── Gemini tool schemas (used by both Genkit and raw-Gemini paths) ────────────
@@ -237,6 +242,14 @@ You do NOT just chat — you take action autonomously:
      Madani inclusivity principles, Persons with Disabilities Act 2008).
   4. Return a final answer with concrete numbers (RM, kg CO₂, minutes).
 
+CRITICAL — handling location:
+  • If the user says "near me", "nearby", "around here" or similar AND the prompt
+    includes the user's current latitude/longitude, USE THOSE COORDINATES SILENTLY.
+  • NEVER ask the user to share their lat/lon — normal users have no idea what
+    their coordinates are. If you genuinely need location and none was provided,
+    ask them for a place name or landmark (e.g. "Which area? KLCC, Bangsar?")
+    and then call search_places_by_intent on that landmark first to anchor.
+
 Routing rules:
   • For "best way to go from A to B" → call plan_commute.
   • If the user wants carpool → call find_carpool_matches after plan_commute.
@@ -246,7 +259,8 @@ Routing rules:
   • For "my impact" / "how am I doing" → call get_user_impact.
   • For "what's next" / "what do I have today" → call check_schedule_now.
   • For fuzzy intents like "find me cheap nasi lemak nearby" or
-    "quiet cafe to study" → call search_places_by_intent, then chain
+    "quiet cafe to study" → call search_places_by_intent (use the user's
+    location coordinates from the prompt if available), then chain
     plan_commute on the chosen result.
   • For city-planning / 'where should I open my cafe' / 'is this a good
     spot for X' → call analyze_site_potential.
@@ -583,11 +597,21 @@ def _run_raw_agent(req: AgentRequest) -> dict:
         system_instruction=SYSTEM_INSTRUCTION,
         generation_config={"temperature": 0.3, "max_output_tokens": 1024},
     )
+
+    # Build the location hint that becomes part of the user's prompt — the
+    # agent will use this to resolve "near me" / "nearby" without asking.
+    loc_hint = ""
+    if req.user_lat is not None and req.user_lon is not None:
+        loc_hint = (f"\n[User's current location: lat={req.user_lat:.5f}, "
+                    f"lon={req.user_lon:.5f}. When the user says 'near me', "
+                    "'nearby' or 'around here', use these coordinates as the "
+                    "search centre — DO NOT ask them for coordinates.]")
+
     ctx_blob  = f"\n[Context: {json.dumps(req.context)}]" if req.context else ""
     lang_hint = {"zh": "Reply in 中文.", "ms": "Reply in Bahasa Melayu.",
                  "en": "Reply in English."}.get(req.language or "en", "Reply in English.")
     chat      = model.start_chat(enable_automatic_function_calling=False)
-    response  = chat.send_message(f"{req.message}{ctx_blob}\n\n({lang_hint})")
+    response  = chat.send_message(f"{req.message}{ctx_blob}{loc_hint}\n\n({lang_hint})")
     tool_trace: List[Dict[str, Any]] = []
 
     for step in range(5):
@@ -603,6 +627,16 @@ def _run_raw_agent(req: AgentRequest) -> dict:
             break
         tool_name = fc.name
         tool_args = dict(fc.args) if fc.args else {}
+
+        # Auto-inject user location for tools that need a near_lat/near_lon
+        # if the model didn't provide one. This is what makes "find nasi
+        # lemak nearby" actually work without the user typing coords.
+        if tool_name == "search_places_by_intent":
+            if "near_lat" not in tool_args and req.user_lat is not None:
+                tool_args["near_lat"] = req.user_lat
+            if "near_lon" not in tool_args and req.user_lon is not None:
+                tool_args["near_lon"] = req.user_lon
+
         log.info(f"[step {step+1}] → {tool_name}({tool_args})")
         try:
             tool_result = _run_tool(tool_name, tool_args, req.user_id)
