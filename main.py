@@ -159,12 +159,21 @@ class UserProfile(BaseModel):
     user_id: str
     email: Optional[str] = None
     name: Optional[str] = None
+
+    # ── Account type (Personal vs Business) ────────────────────────────
+    # Personal users see Citizen Mode (commute, carpool, schedules).
+    # Business users see Planner Mode (site analysis, mikro verification).
+    # The two flows are completely separated in the UI.
+    account_type: str = "personal"   # 'personal' | 'business'
+
     # Routing preferences (default: balanced 33/33/34)
     prefer_fast: float = 0.33
     prefer_cheap: float = 0.33
     prefer_green: float = 0.34
     vehicle_type: str = "car"
-    # Saved locations (used by Proactive Agent)
+    # Saved locations (used by Proactive Agent + LocationPicker)
+    home_lat: Optional[float] = None
+    home_lon: Optional[float] = None
     work_lat: Optional[float] = None
     work_lon: Optional[float] = None
 
@@ -328,6 +337,11 @@ class ChatRequest(BaseModel):
     user_id:  str
     message:  str
     context:  Optional[dict] = None
+    # Browser geolocation passed by the frontend so the agent can resolve
+    # phrases like "near me", "nearby", "around here" without asking the user.
+    user_lat: Optional[float] = None
+    user_lon: Optional[float] = None
+    language: Optional[str] = "en"
 
 # ============================================================
 # Utility Helpers
