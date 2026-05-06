@@ -1,9 +1,26 @@
 .env
 firebase-key.json
-gcp-key.json
 
 venv/
 env/
 
 __pycache__/
 *.pyc
+
+.env
+*.json
+__pycache__/
+venv/
+
+.env
+*.json
+
+__pycache__/
+*.pyc
+venv/
+env/
+
+.DS_Store
+Thumbs.db
+
+*.swp
