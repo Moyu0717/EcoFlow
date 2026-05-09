@@ -78,6 +78,8 @@ class SiteAnalysisRequest(BaseModel):
                                              "convenience_store | other")
     view:          str   = Field(default="merchant",
                                  description="merchant | resident | developer")
+    # Used to bump the billing counter on each successful analysis.
+    user_id:       Optional[str] = None
 
 
 class HeatmapRequest(BaseModel):
@@ -145,6 +147,14 @@ def analyze_site(req: SiteAnalysisRequest):
         req, foot, competitors, transit, oku_score,
         carbon_saving, score, rag_text, call_gemini
     )
+
+    # Track usage for billing — never raises (no-op if user_id not passed).
+    if req.user_id:
+        try:
+            from billing import record_query_for_user
+            record_query_for_user(req.user_id, "site_analysis")
+        except Exception as e:
+            log.warning(f"billing track skipped: {e}")
 
     return {
         "location":        {"lat": req.lat, "lon": req.lon, "radius_km": req.radius_km},
@@ -273,116 +283,11 @@ def merchant_get(user_id: str):
     return out
 
 
-@planner_router.post("/merchant/verify-mikro")
-async def verify_mikro_with_vision(
-    user_id: str = Form(...),
-    file:    UploadFile = File(...),
-):
-    """
-    Verify a Mikro Enterprise via SSM business registration cert.
 
-    Flow:
-      1. User uploads photo/PDF of their SSM cert.
-      2. Gemini 2.5 Flash (vision) extracts SSM number, company name,
-         registration date.
-      3. We sanity-check the SSM number against known formats.
-      4. Tier flips to 'mikro' → free Planner Mode access.
 
-    NOTE: A production deployment would cross-verify against the SSM
-    e-Info portal API. For the hackathon we surface what Gemini extracts
-    so the judges see the multimodal AI working.
-    """
-    from main import db, gemini_model
-
-    if gemini_model is None:
-        raise HTTPException(503, "Gemini Vision is not available right now.")
-
-    # Read upload
-    raw = await file.read()
-    if not raw or len(raw) > 8 * 1024 * 1024:
-        raise HTTPException(413, "File missing or larger than 8 MB.")
-
-    mime = file.content_type or "image/jpeg"
-
-    # Build the Gemini multimodal prompt
-    instruction = (
-        "You are extracting fields from a Malaysian SSM (Suruhanjaya Syarikat "
-        "Malaysia) business registration certificate. "
-        "Return a STRICT JSON object with these keys ONLY:\n"
-        "  ssm_number       — registration number (e.g. 202401012345 or "
-        "201501045678 or PG0123456-A); empty string if not visible.\n"
-        "  business_name    — registered company / enterprise name; empty if "
-        "not visible.\n"
-        "  registered_date  — registration date as YYYY-MM-DD; empty if not "
-        "readable.\n"
-        "  business_address — single-line address; empty if not visible.\n"
-        "  is_mikro_signal  — true ONLY if you see an indicator that the "
-        "business is registered as a sole-proprietorship / enterprise / "
-        "perniagaan kecil; otherwise false.\n"
-        "  confidence       — your overall confidence 0.0-1.0.\n"
-        "  notes            — one short sentence about anything unusual.\n"
-        "Reply with ONLY the JSON, no markdown."
-    )
-
-    try:
-        import google.generativeai as genai
-        # Use a fresh model handle so the response is well-formed JSON.
-        vision = genai.GenerativeModel(
-            "gemini-2.5-flash",
-            generation_config={
-                "temperature": 0.0,
-                "max_output_tokens": 600,
-                "response_mime_type": "application/json",
-            },
-        )
-        resp = vision.generate_content([
-            {"mime_type": mime, "data": raw},
-            instruction,
-        ])
-        text = (resp.text or "").strip()
-        # Strip markdown fences just in case
-        text = re.sub(r"^```(?:json)?|```$", "", text, flags=re.MULTILINE).strip()
-        extracted = json.loads(text)
-    except Exception as e:
-        log.warning(f"Gemini Vision SSM extraction failed: {e}")
-        raise HTTPException(502, f"Vision extraction failed: {e}")
-
-    ssm_num = (extracted.get("ssm_number") or "").strip()
-    valid = _looks_like_ssm_number(ssm_num)
-    confidence = float(extracted.get("confidence") or 0.0)
-
-    # Decision logic — verify if SSM number looks plausible AND model is confident
-    verified = bool(valid and confidence >= 0.5)
-    tier = "mikro" if verified else "pending"
-
-    # Persist
-    profile_update = {
-        "user_id":             user_id,
-        "ssm_number":          ssm_num,
-        "ssm_extracted":       extracted,
-        "ssm_format_valid":    valid,
-        "tier":                tier,
-        "verification_status": "verified_mikro" if verified else "pending_review",
-        "verified_at":         firestore.SERVER_TIMESTAMP if verified else None,
-    }
-    db.collection("merchant_profiles").document(user_id).set(
-        {k: v for k, v in profile_update.items() if v is not None},
-        merge=True,
-    )
-
-    return {
-        "status":          "verified" if verified else "needs_review",
-        "tier":            tier,
-        "extracted":       extracted,
-        "ssm_format_valid": valid,
-        "free_planner_access": verified,
-        "message": (
-            "Verified — enjoy free Planner Mode access."
-            if verified
-            else "We couldn't auto-verify your cert. We've saved your details "
-                 "for manual review (24h)."
-        ),
-    }
+# NOTE: Mikro verification used to live here. It's now part of the
+# billing module (see /api/v1/billing/{user_id}/verify-ssm) so a single
+# call updates both the merchant profile AND the billing tier.
 
 
 # ─────────────────────────────────────────────────────────────────────────────

@@ -1304,6 +1304,11 @@ body.planner-mode #plannerPanel{ display:flex !important; }
   flex-direction:column;
   font-family:var(--font); color:var(--text); z-index:850;
 }
+/* Push planner panel down when the trial banner is visible (business only) */
+body.acct-business.has-trial-banner #plannerPanel{
+  top:170px;
+  max-height:calc(100vh - 190px);
+}
 #plannerPanel .pp-head{
   padding:14px 16px; border-bottom:1px solid var(--border);
   display:flex; align-items:center; justify-content:space-between;
@@ -1504,11 +1509,15 @@ body.acct-business #railCarpool,
 body.acct-business #mobileTabBar [data-personal-only]{
   display:none !important;
 }
-/* Business: planner panel always shown */
+/* Business: planner panel always shown, billing rail item visible */
 body.acct-business #plannerPanel{
   display:flex !important;
 }
+body.acct-business #railBilling{
+  display:flex !important;
+}
 /* Business gets a small badge */
+body.acct-business .rail-avatar{ position:relative; }
 body.acct-business .rail-avatar::after{
   content:"BIZ";
   position:absolute;
@@ -1518,6 +1527,88 @@ body.acct-business .rail-avatar::after{
   padding:1px 4px; border-radius:4px;
   letter-spacing:0.05em;
 }
+
+/* ─── Trial / verification banner (above plannerPanel) ──────────── */
+#trialBanner{
+  display:none;
+  position:fixed;
+  top:24px; left:auto; right:24px;
+  width:380px; max-width:calc(100vw - 100px);
+  background:linear-gradient(135deg, var(--orange-bg) 0%, var(--surface) 100%);
+  border:1px solid var(--orange);
+  border-radius:12px;
+  padding:12px 14px;
+  z-index:840;
+  font-family:var(--font);
+  box-shadow:var(--shadow-sm);
+}
+body.acct-business #trialBanner.show{ display:block; }
+#trialBanner .tb-row{
+  display:flex; align-items:center; justify-content:space-between;
+  gap:10px;
+}
+#trialBanner .tb-msg{
+  flex:1; font-size:12px; color:var(--text); line-height:1.4;
+}
+#trialBanner .tb-msg strong{ color:var(--orange); }
+#trialBanner .tb-cta{
+  padding:6px 12px; border-radius:8px;
+  background:var(--orange); color:#fff; border:0;
+  font-weight:700; font-size:12px; font-family:var(--font);
+  cursor:pointer; white-space:nowrap;
+}
+@media (max-width: 768px){
+  #trialBanner{
+    top:auto; bottom:64px; left:8px; right:8px;
+    width:auto; max-width:none;
+  }
+}
+
+/* ─── Billing panel inner cards ────────────────────────────────── */
+.bl-card{
+  background:var(--card); border:1px solid var(--border);
+  border-radius:10px; padding:14px; margin-bottom:10px;
+}
+.bl-card .bl-row{
+  display:flex; justify-content:space-between; align-items:baseline;
+  margin-bottom:6px;
+}
+.bl-card .bl-label{
+  font-size:11px; color:var(--text3); text-transform:uppercase;
+  letter-spacing:0.06em; font-weight:700;
+}
+.bl-card .bl-value{
+  font-size:20px; color:var(--text); font-weight:800;
+  font-family:var(--mono);
+}
+.bl-card .bl-sub{
+  font-size:12px; color:var(--text2); line-height:1.5;
+}
+.bl-tier-pill{
+  display:inline-block; font-size:11px; font-weight:700;
+  padding:3px 10px; border-radius:99px; letter-spacing:0.04em;
+}
+.bl-tier-pill.trial      { background:var(--orange-bg); color:var(--orange); }
+.bl-tier-pill.early-bird { background:var(--blue-bg);   color:var(--blue);   }
+.bl-tier-pill.mikro      { background:var(--accent-bg); color:var(--accent); }
+.bl-tier-pill.standard   { background:var(--card2);     color:var(--text2);  }
+.bl-progress{
+  height:8px; background:var(--card2); border-radius:99px;
+  overflow:hidden; margin:6px 0 4px;
+}
+.bl-progress > span{
+  display:block; height:100%;
+  background:linear-gradient(90deg, var(--accent) 0%, var(--blue) 100%);
+}
+.bl-rules-grid{
+  display:grid; grid-template-columns:1fr 1fr; gap:8px;
+  margin-top:8px;
+}
+.bl-rules-grid > div{
+  background:var(--card2); padding:8px 10px; border-radius:6px;
+  font-size:11px; color:var(--text2);
+}
+.bl-rules-grid b{ color:var(--text); font-weight:700; }
 
 /* ─── Business verification status chip (shown in profile) ───────── */
 .biz-status-chip{
@@ -1622,19 +1713,11 @@ body.acct-business .rail-avatar::after{
           <option value="other">Other</option>
         </select>
       </div>
-      <div class="auth-field">
-        <label class="auth-label">SSM registration number</label>
-        <input class="auth-input" id="bSSM" placeholder="e.g. 202401012345 or PG0123456-A" maxlength="20"/>
-      </div>
-      <div class="auth-field">
-        <label class="auth-label">SSM certificate <span style="text-transform:none;letter-spacing:0;color:var(--text3);font-weight:500">— Gemini Vision will read it</span></label>
-        <div class="upload-zone" id="bSSMDrop" onclick="document.getElementById('bSSMFile').click()">
-          <input type="file" id="bSSMFile" accept="image/*,application/pdf" onchange="authPreviewSSM(this)"/>
-          <div class="uz-msg" id="bSSMMsg"><strong>Tap to upload</strong> a photo of your SSM cert<br><span style="font-size:11px;color:var(--text3)">JPG / PNG / PDF · up to 8 MB</span></div>
-        </div>
-      </div>
-      <div style="font-size:11px; color:var(--text3); margin: 4px 0 8px; line-height:1.4">
-        We'll cross-check the cert via SSM &amp; SME Corp Malaysia infrastructure. Mikro businesses (annual revenue &lt; RM 300k <em>or</em> &lt; 5 employees) get Planner Mode <strong>free</strong>.
+      <div style="font-size:11px; color:var(--text3); line-height:1.5; padding:10px; background:var(--card2); border-radius:8px; margin: 6px 0 10px;">
+        <strong style="color:var(--accent)">14-day free trial.</strong> No SSM number needed yet — you can verify
+        any time in the Billing tab. <strong>Verify within 14 days for 50% off your
+        first 3 months</strong>, or instantly free if you're a Mikro enterprise
+        (revenue &lt; RM 300k or &lt; 5 employees).
       </div>
     </div>
 
@@ -1650,7 +1733,7 @@ body.acct-business .rail-avatar::after{
     <button class="auth-submit" id="aSubmit" onclick="authSubmit()">Log in</button>
     <div class="auth-err" id="aErr"></div>
 
-    <button class="auth-guest" style="margin-top:10px; display:flex; align-items:center; justify-content:center; gap:10px; background:#fff; color:#3c4043; border:1px solid #dadce0; font-weight:600;" onclick="authGoogle()">
+    <button class="auth-guest" id="authGoogleBtn" style="margin-top:10px; display:flex; align-items:center; justify-content:center; gap:10px; background:#fff; color:#3c4043; border:1px solid #dadce0; font-weight:600;" onclick="authGoogle()">
       <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
         <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
         <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
@@ -1660,7 +1743,7 @@ body.acct-business .rail-avatar::after{
     Continue with Google
   </button>
 
-    <button class="auth-guest" onclick="authGuest()">Continue as guest (Personal)</button>
+    <button class="auth-guest" id="authGuestBtn" onclick="authGuest()">Continue as guest (Personal)</button>
 
     <div class="auth-footer" id="aFooter">
       Need an account? <span onclick="authSwitch('signup')" style="cursor:pointer">Create one</span>
@@ -1688,6 +1771,10 @@ body.acct-business .rail-avatar::after{
   <button class="rail-item" id="railCarpool" onclick="navTo('carpool')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
     <span class="rail-tt">Carpool</span>
+  </button>
+  <button class="rail-item" id="railBilling" onclick="navTo('billing')" style="display:none">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+    <span class="rail-tt">Billing</span>
   </button>
   <button class="rail-item" id="railChat" onclick="navTo('chat')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
@@ -1858,6 +1945,14 @@ body.acct-business .rail-avatar::after{
 </div>
 
 <!-- ═══ PLANNER MODE PANEL ═══ -->
+<!-- ═══ TRIAL / VERIFICATION BANNER (Business only) ═══ -->
+<div id="trialBanner">
+  <div class="tb-row">
+    <div class="tb-msg" id="tbMsg">14-day free trial active.</div>
+    <button class="tb-cta" id="tbCta" onclick="navTo('billing')">Verify SSM</button>
+  </div>
+</div>
+
 <div id="plannerPanel">
   <div class="pp-head">
     <h3>City Planner Mode</h3>
@@ -2087,6 +2182,23 @@ body.acct-business .rail-avatar::after{
     </div>
   </div>
 </div>
+
+<!-- ═══ BILLING PANEL (Business accounts only) ═══ -->
+<div class="side-panel" id="panelBilling">
+  <div class="ph-hd">
+    <div style="flex:1">
+      <div class="ph-title">Billing &amp; Subscription</div>
+      <div class="ph-sub">Planner Mode usage and SSM verification</div>
+    </div>
+    <button class="ph-close" onclick="closeSidePanel()">✕</button>
+  </div>
+  <div class="panel-scroll pb" id="billingBody">
+    <div class="loading-state"><div class="loading-spinner"></div><div class="loading-txt">Loading…</div></div>
+  </div>
+</div>
+
+<!-- Hidden file input for SSM upload from Billing panel -->
+<input type="file" id="ssmFileFromBilling" accept="image/*,application/pdf" style="display:none" onchange="ecoBillingSubmitSSM(this)"/>
 
 <div class="side-panel" id="panelProfile">
   <div class="ph-hd">
@@ -2678,20 +2790,33 @@ function getIconBg(mode) { const c = MC[mode] || '#888'; return `background:${c}
 
 /* ─── MAP ─── */
 let MAPBOX_TOKEN = "";
-fetch("/api/config").then(r => r.json()).then(cfg => {
-  MAPBOX_TOKEN = cfg.mapbox_token;
-  currentMode = null; // force tile layer to rebuild with real token
-  applyMode(getMode());
-});
 const map = L.map('map', {zoomControl: true, attributionControl: false}).setView([3.139, 101.687], 13);
 
-// 老老实实使用你验证过好用的底图链接（dark-v11 和 256 像素完美适配）
+// OSM fallback — shown immediately while waiting for Mapbox token, and used
+// permanently if the token is missing or invalid.
+const OSM_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 const TILES = {
-  get day() { return `https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/256/{z}/{x}/{y}?access_token=${MAPBOX_TOKEN}`; },
-  get night() { return `https://api.mapbox.com/styles/v1/mapbox/dark-v11/tiles/256/{z}/{x}/{y}?access_token=${MAPBOX_TOKEN}`; }
+  get day()   { return MAPBOX_TOKEN ? `https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/256/{z}/{x}/{y}?access_token=${MAPBOX_TOKEN}` : OSM_URL; },
+  get night() { return MAPBOX_TOKEN ? `https://api.mapbox.com/styles/v1/mapbox/dark-v11/tiles/256/{z}/{x}/{y}?access_token=${MAPBOX_TOKEN}`   : OSM_URL; }
 };
 
 let currentMode = null, tileLayer = null, trafficLayer = null, trafficOn = false;
+
+// Fetch Mapbox token from backend, then swap tiles once it arrives.
+fetch("/api/config")
+  .then(r => { if (!r.ok) throw new Error('api/config returned ' + r.status); return r.json(); })
+  .then(cfg => {
+    const tok = (cfg.mapbox_token || "").trim();
+    if (!tok) { console.warn("[EcoFlow] MAPBOX_TOKEN is empty — using OSM fallback"); return; }
+    MAPBOX_TOKEN = tok;
+    window.MAPBOX_TOKEN = tok; // expose for geocoder
+    console.log("[EcoFlow] Mapbox token loaded, swapping tiles");
+    currentMode = null; // force tile layer to rebuild with real token
+    applyMode(getMode());
+  })
+  .catch(err => {
+    console.error("[EcoFlow] Failed to fetch /api/config:", err, "— using OSM tiles");
+  });
 
 function getMode() { 
   const h = new Date().getHours(); 
@@ -2703,7 +2828,17 @@ function applyMode(mode) {
   currentMode = mode;
   
   if (tileLayer) map.removeLayer(tileLayer);
-  tileLayer = L.tileLayer(TILES[mode], {maxZoom: 19, tileSize: 256}).addTo(map);
+  const url = TILES[mode];
+  tileLayer = L.tileLayer(url, {maxZoom: 19, tileSize: 256}).addTo(map);
+  // If Mapbox tiles fail (bad token / rate limit), silently fall back to OSM
+  let _mapboxFailed = false;
+  tileLayer.on('tileerror', function() {
+    if (_mapboxFailed || !MAPBOX_TOKEN) return;
+    _mapboxFailed = true;
+    console.warn("[EcoFlow] Mapbox tile error — falling back to OSM");
+    map.removeLayer(tileLayer);
+    tileLayer = L.tileLayer(OSM_URL, {maxZoom: 19}).addTo(map);
+  });
   
   // If the traffic overlay is currently enabled, re-apply it on top of the
   // new base layer with the correct day/night variant. Crucially, this is a
@@ -3270,7 +3405,7 @@ function navTo(tab) {
   // 对应表：tab 名称 → HTML id 后缀
   const RAIL_ID_MAP = {
     map: 'Map', impact: 'Impact', leaderboard: 'LB', carpool: 'Carpool',
-    chat: 'Chat', profile: 'Profile', settings: 'Settings'
+    chat: 'Chat', profile: 'Profile', settings: 'Settings', billing: 'Billing'
   };
   const railSuffix = RAIL_ID_MAP[tab] || tab.charAt(0).toUpperCase() + tab.slice(1);
   const railEl = document.getElementById('rail' + railSuffix);
@@ -3279,17 +3414,17 @@ function navTo(tab) {
   document.querySelectorAll('.side-panel').forEach(p => p.classList.remove('open'));
 
   if (tab === 'map') return;
-  
+
   // 打开对应的面板 — 同样用上面的映射表
   const targetPanel = document.getElementById('panel' + railSuffix);
   if (targetPanel) {
     targetPanel.classList.add('open');
-    // 根据不同标签加载数据
     if (tab === 'impact') loadImpact();
     if (tab === 'leaderboard') loadLeaderboard();
     if (tab === 'profile') loadProfile();
     if (tab === 'settings') loadSettings();
     if (tab === 'carpool') ecoLoadCarpool();
+    if (tab === 'billing') ecoLoadBilling();
   }
 }
 
@@ -3316,9 +3451,9 @@ function step(s) {
       {mode: 'Motorcycle',       lbl: 'Motorcycle', sub: 'Quick · low fuel',  icon: 'motorcycle'},
       {mode: 'Grab / E-hailing', lbl: 'E-hailing',  sub: 'Grab · InDrive',    icon: 'grab'},
       {mode: 'Bus / RapidKL',    lbl: 'Bus',        sub: 'RapidKL · MyBas',   icon: 'bus'},
-      {mode: 'MRT / LRT',        lbl: 'Transit',    sub: 'MRT · LRT · KTM',   icon: 'mrt',      klOnly: true},
-      {mode: 'Park & Ride',      lbl: 'Park+Ride',  sub: 'Drive to station',  icon: 'parkride', klOnly: true},
-      {mode: 'Park & Walk',      lbl: 'Park+Walk',  sub: 'Skip city traffic', icon: 'parkride', klOnly: true},
+      {mode: 'MRT / LRT',        lbl: 'Transit',    sub: 'MRT · LRT · KTM',   icon: 'mrt'},
+      {mode: 'Park & Ride',      lbl: 'Park+Ride',  sub: 'Drive to station',  icon: 'parkride'},
+      {mode: 'Park & Walk',      lbl: 'Park+Walk',  sub: 'Skip city traffic', icon: 'parkride'},
       {mode: 'Cycling',          lbl: 'Cycling',    sub: 'Healthy & green',   icon: 'cycle'},
       {mode: 'Walking',          lbl: 'Walking',    sub: 'Zero emissions',    icon: 'walk'},
     ];
@@ -5165,6 +5300,24 @@ async function loadProfile() {
         <option value="none">No Vehicle</option>
       </select>
     </div>
+
+    <!-- OKU accessibility (Persons with Disabilities Act 2008) -->
+    <div class="form-group" style="background:var(--purple-bg); padding:10px 12px; border-radius:8px; margin-top:6px">
+      <label class="form-label" style="display:flex; align-items:center; gap:8px; cursor:pointer">
+        <input type="checkbox" id="profileIsOku" style="accent-color:var(--purple)" onchange="document.getElementById('profileOkuNeeds').style.display = this.checked ? 'flex' : 'none'"/>
+        <span style="color:var(--purple); font-weight:700">I am a person with disability (OKU)</span>
+      </label>
+      <div id="profileOkuNeeds" style="display:none; flex-wrap:wrap; gap:6px; margin-top:8px">
+        <label class="oku-need-pill"><input type="checkbox" value="wheelchair">Wheelchair</label>
+        <label class="oku-need-pill"><input type="checkbox" value="visual">Visual</label>
+        <label class="oku-need-pill"><input type="checkbox" value="hearing">Hearing</label>
+        <label class="oku-need-pill"><input type="checkbox" value="mobility_aid">Mobility aid</label>
+      </div>
+      <div style="font-size:11px; color:var(--text2); margin-top:6px; line-height:1.4">
+        EcoFlow prioritises OKU-friendly carpool providers when matching you.
+      </div>
+    </div>
+
     <button class="btn-nav" onclick="updatePrefs()" style="margin-top:4px">Save Preferences</button>
     <div id="profileMsg" style="margin-top:10px;font-size:12px;color:var(--accent);text-align:center;min-height:16px"></div>
     <button class="profile-logout" onclick="logout()">Log out</button>
@@ -5188,6 +5341,16 @@ async function loadProfile() {
       document.getElementById('prefGreen').value = gr;
       document.getElementById('vGreen').textContent = gr + '%';
       if (d.profile.vehicle_type) document.getElementById('prefVehicle').value = d.profile.vehicle_type;
+      // OKU restore
+      const okuBox = document.getElementById('profileIsOku');
+      if (okuBox && d.profile.is_oku) {
+        okuBox.checked = true;
+        document.getElementById('profileOkuNeeds').style.display = 'flex';
+        const needs = d.profile.oku_needs || [];
+        document.querySelectorAll('#profileOkuNeeds input').forEach(c => {
+          c.checked = needs.includes(c.value);
+        });
+      }
     }
   } catch(e) { /* use defaults */ }
 }
@@ -5199,14 +5362,23 @@ async function saveProfile() {
   const green = +document.getElementById('prefGreen').value / 100;
   const vehicle = document.getElementById('prefVehicle').value;
   const msgEl = document.getElementById('profileMsg');
+  // OKU toggle (rendered next to Profile prefs by ecoInjectOkuToggle)
+  const okuBox = document.getElementById('profileIsOku');
+  const isOku = okuBox ? okuBox.checked : (ecoUserProfile?.is_oku || false);
+  const okuNeeds = [...document.querySelectorAll('#profileOkuNeeds input:checked')].map(i => i.value);
   try {
     await fetch(`${API}/api/v1/user-profile`, {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
         user_id: USER.id, prefer_fast: fast, prefer_cheap: cheap,
         prefer_green: green, vehicle_type: vehicle,
+        is_oku: isOku, oku_needs: okuNeeds,
       }),
     });
+    if (ecoUserProfile) {
+      ecoUserProfile.is_oku    = isOku;
+      ecoUserProfile.oku_needs = okuNeeds;
+    }
     msgEl.style.color = 'var(--accent)';
     msgEl.textContent = '✓ Preferences saved';
     setTimeout(() => msgEl.textContent = '', 2500);
@@ -5981,10 +6153,18 @@ async function ecoRunSiteAnalysis() {
   try {
     const r = await fetch(`${API}/api/v1/planner/analyze-site`, {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({lat, lon, radius_km: radius, business_type, view}),
+      body: JSON.stringify({
+        lat, lon,
+        radius_km: radius,
+        business_type, view,
+        // user_id makes the backend log this query to the billing usage counter
+        user_id: (USER && USER.id) || null,
+      }),
     });
     const d = await r.json();
     ecoRenderSiteResult(d);
+    // Refresh trial banner & billing view (usage went up by 1)
+    if (ecoAccountType === 'business') ecoRefreshBilling();
   } catch(e) {
     wrap.innerHTML = `<div style="color:var(--red);font-size:13px;">Analysis failed: ${e.message}</div>`;
   }
@@ -6070,16 +6250,15 @@ function authSetAcctType(t) {
   document.getElementById('authBusinessFields').style.display = (t === 'business') ? 'block' : 'none';
   document.getElementById('acctTypeHint').textContent = (t === 'personal')
     ? 'Personal accounts get the commute Citizen Mode (route planning, carpool, schedules).'
-    : 'Business accounts get City Planner Mode after SSM verification (Mikro = free).';
+    : '14-day free trial. Verify SSM later for Mikro-free or 50% off discount.';
+  // Hide Google + Guest for Business signup (Business needs proper account)
+  const goog = document.getElementById('authGoogleBtn');
+  const guest = document.getElementById('authGuestBtn');
+  if (goog)  goog.style.display  = (t === 'business') ? 'none' : 'flex';
+  if (guest) guest.style.display = (t === 'business') ? 'none' : 'block';
 }
 
-function authPreviewSSM(input) {
-  const file = input.files && input.files[0];
-  if (!file) return;
-  ecoSSMFile = file;
-  const msg = document.getElementById('bSSMMsg');
-  msg.innerHTML = `<strong>${file.name}</strong><br><span style="font-size:11px;color:var(--text3)">${(file.size/1024).toFixed(0)} KB · will be verified by Gemini Vision</span>`;
-}
+function authPreviewSSM(_input) { /* deprecated — SSM upload moved to Billing tab */ }
 
 // Hook into the existing authSwitch so the account-type tabs only show on signup
 (function(){
@@ -6089,11 +6268,15 @@ function authPreviewSSM(input) {
       _origAuthSwitch(mode);
       const wrap = document.getElementById('acctTypeWrap');
       if (wrap) wrap.style.display = (mode === 'signup') ? 'block' : 'none';
-      // On signup, default to personal
+      // On signup, default to personal (which also re-shows Google/Guest)
       if (mode === 'signup') authSetAcctType('personal');
-      // Hide both signup field-blocks when in login mode
+      // Login mode: always show Google/Guest, hide business fields
       if (mode === 'login') {
         document.getElementById('authBusinessFields').style.display = 'none';
+        const goog = document.getElementById('authGoogleBtn');
+        const guest = document.getElementById('authGuestBtn');
+        if (goog)  goog.style.display  = 'flex';
+        if (guest) guest.style.display = 'block';
       }
     };
   }
@@ -6122,10 +6305,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Signup: pre-validate business-specific fields
     if (ecoSignupAcctType === 'business') {
       const bn = document.getElementById('bName').value.trim();
-      const ssm = document.getElementById('bSSM').value.trim();
-      if (!bn) { document.getElementById('aErr').textContent = 'Please enter your business name.'; return; }
-      if (!ssm) { document.getElementById('aErr').textContent = 'Please enter your SSM registration number.'; return; }
-      if (!ecoSSMFile) { document.getElementById('aErr').textContent = 'Please upload your SSM certificate.'; return; }
+      if (!bn) {
+        document.getElementById('aErr').textContent = 'Please enter your business name.';
+        return;
+      }
     }
     // Run the original signup (creates Firebase user + stores profile)
     _origAuthSubmit();
@@ -6158,42 +6341,35 @@ async function ecoFinaliseSignup() {
     return;
   }
 
-  // Business signup → register merchant + Vision-verify SSM
+  // Business signup — register the merchant and open a 14-day trial.
+  // SSM verification happens later inside the Billing tab.
   const bn  = document.getElementById('bName').value.trim();
   const bt  = document.getElementById('bType').value;
-  const ssm = document.getElementById('bSSM').value.trim();
   try {
     await fetch(`${API}/api/v1/planner/merchant/register`, {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
         user_id: USER.id, business_name: bn, business_type: bt,
-        ssm_number: ssm, tier: 'standard',
+        ssm_number: null, tier: 'trial',
       }),
     });
-    if (ecoSSMFile) {
-      ecoShowDemoToast('Verifying SSM certificate with Gemini Vision…');
-      const form = new FormData();
-      form.append('user_id', USER.id);
-      form.append('file', ecoSSMFile);
-      const r = await fetch(`${API}/api/v1/planner/merchant/verify-mikro`, {
-        method:'POST', body: form,
-      });
-      const d = await r.json();
-      ecoBizMeta = {
-        business_name: bn, business_type: bt,
-        ssm_number: ssm, tier: d.tier || 'pending',
-        is_mikro: d.tier === 'mikro',
-        verified: d.status === 'verified',
-        extracted: d.extracted,
-      };
-      if (d.status === 'verified') {
-        ecoShowDemoToast(`✓ Verified · Mikro tier · free Planner access`);
-      } else {
-        ecoShowDemoToast('Saved for manual review. Continuing as standard tier.');
-      }
-    }
+    // FIX: write account_type:'business' to user-profile so re-login detects it
+    await fetch(`${API}/api/v1/user-profile`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        user_id: USER.id, account_type: 'business',
+        prefer_fast: 0.33, prefer_cheap: 0.33, prefer_green: 0.34,
+        vehicle_type: 'car',
+      }),
+    });
+    // Open billing account (server creates a trial doc on first GET)
+    await fetch(`${API}/api/v1/billing/${USER.id}`);
+    ecoBizMeta = { business_name: bn, business_type: bt, tier: 'trial', is_mikro: false };
+    // FIX: also persist to localStorage so MockDB restarts don't forget account type
+    try { localStorage.setItem('ef_acct_' + USER.id, 'business'); } catch(_) {}
+    ecoShowDemoToast(`Welcome — your 14-day free trial starts now.`);
   } catch(e) {
-    ecoShowDemoToast('Business registration: ' + e.message);
+    ecoShowDemoToast('Business signup: ' + e.message);
   }
   ecoAccountType = 'business';
   ecoApplyAccountType();
@@ -6218,6 +6394,11 @@ function ecoApplyAccountType() {
 // ─── Load full profile after login (called from boot) ───
 async function ecoLoadProfile() {
   if (!USER || !USER.id) return;
+
+  // FIX: localStorage fallback so account type survives MockDB/server restarts
+  const cachedAcct = localStorage.getItem('ef_acct_' + USER.id);
+  if (cachedAcct === 'business') ecoAccountType = 'business';
+
   try {
     const r = await fetch(`${API}/api/v1/user-profile/${USER.id}`);
     const d = await r.json();
@@ -6225,7 +6406,8 @@ async function ecoLoadProfile() {
     // Determine account type from profile (if recorded)
     if (ecoUserProfile && ecoUserProfile.account_type === 'business') {
       ecoAccountType = 'business';
-    } else {
+      localStorage.setItem('ef_acct_' + USER.id, 'business'); // keep cache fresh
+    } else if (ecoAccountType !== 'business') {
       // Also check merchant_profiles → if exists, treat as business
       try {
         const m = await fetch(`${API}/api/v1/planner/merchant/${USER.id}`);
@@ -6234,12 +6416,16 @@ async function ecoLoadProfile() {
           if (md && md.business_name) {
             ecoAccountType = 'business';
             ecoBizMeta = md;
+            localStorage.setItem('ef_acct_' + USER.id, 'business');
           }
         }
       } catch(e) {}
     }
     ecoApplyAccountType();
-  } catch(e) { /* silent */ }
+  } catch(e) {
+    // If backend is down, still apply whatever we got from localStorage
+    ecoApplyAccountType();
+  }
 }
 
 // ─── Carpool: switch tabs, register, find ───
@@ -6355,6 +6541,205 @@ async function ecoCpRegister() {
   }
 }
 
+// ─── Billing state + view ───────────────────────────────────────
+let _ecoBillingState = null;
+
+async function ecoLoadBilling() {
+  if (!USER || !USER.id || ecoAccountType !== 'business') return;
+  const body = document.getElementById('billingBody');
+  body.innerHTML = '<div class="loading-state"><div class="loading-spinner"></div><div class="loading-txt">Loading…</div></div>';
+  try {
+    const r = await fetch(`${API}/api/v1/billing/${USER.id}`);
+    const d = await r.json();
+    _ecoBillingState = d;
+    ecoRenderBilling(d);
+    ecoRenderTrialBanner(d);
+  } catch(e) {
+    body.innerHTML = `<div style="color:var(--red);padding:14px">Could not load billing: ${e.message}</div>`;
+  }
+}
+
+async function ecoRefreshBilling() {
+  // Lightweight refresh: just re-pull billing state without showing loader.
+  if (!USER || !USER.id || ecoAccountType !== 'business') return;
+  try {
+    const r = await fetch(`${API}/api/v1/billing/${USER.id}`);
+    const d = await r.json();
+    _ecoBillingState = d;
+    ecoRenderTrialBanner(d);
+    if (document.getElementById('panelBilling').classList.contains('open')) {
+      ecoRenderBilling(d);
+    }
+  } catch(e) {}
+}
+
+function ecoRenderTrialBanner(d) {
+  const banner = document.getElementById('trialBanner');
+  const msgEl  = document.getElementById('tbMsg');
+  const ctaEl  = document.getElementById('tbCta');
+  if (!banner) return;
+
+  // Hide banner once user is verified (Mikro / Early Bird / Standard with cert)
+  if (d.ssm_verified) {
+    banner.classList.remove('show');
+    document.body.classList.remove('has-trial-banner');
+    return;
+  }
+
+  let msg = '';
+  if (d.trial_active) {
+    msg = `<strong>${d.trial_days_left} day${d.trial_days_left === 1 ? '' : 's'} left in trial.</strong> ` +
+          (d.verify_window_open
+            ? `Verify SSM in ${d.verify_days_left} day${d.verify_days_left === 1 ? '' : 's'} for Mikro-free or 50% off.`
+            : `SSM verification window has closed — full price applies after trial.`);
+  } else {
+    msg = `<strong>Trial expired.</strong> ` +
+          (d.verify_window_open
+            ? `${d.verify_days_left} day${d.verify_days_left === 1 ? '' : 's'} left to verify SSM for 50% off.`
+            : `Standard rate (RM ${d.standard_price_per_query_rm.toFixed(2)}/query) applies.`);
+  }
+  msgEl.innerHTML = msg;
+  ctaEl.textContent = d.ssm_verified ? 'View billing' : 'Verify SSM';
+  banner.classList.add('show');
+  document.body.classList.add('has-trial-banner');
+}
+
+function ecoRenderBilling(d) {
+  const body = document.getElementById('billingBody');
+  const tierClass = (d.tier || 'standard').replace('_', '-');
+  const tierPill = `<span class="bl-tier-pill ${tierClass}">${escHtml(d.tier_label || '')}</span>`;
+
+  // Trial progress bar (% elapsed)
+  let trialPct = 0;
+  if (d.rules && d.trial_days_left != null) {
+    const total = d.rules.trial_days || 14;
+    trialPct = Math.max(0, Math.min(100, ((total - d.trial_days_left) / total) * 100));
+  }
+
+  const verifyBlock = d.ssm_verified ? `
+    <div class="bl-card">
+      <div class="bl-row">
+        <div class="bl-label">SSM Verification</div>
+        <span class="bl-tier-pill mikro">✓ Verified</span>
+      </div>
+      <div class="bl-sub">SSM #${escHtml(d.ssm_number || '—')} · verified ${d.ssm_verified_at ? d.ssm_verified_at.slice(0,10) : ''}</div>
+    </div>
+  ` : `
+    <div class="bl-card">
+      <div class="bl-row">
+        <div class="bl-label">SSM Verification</div>
+        <span class="bl-tier-pill ${d.verify_window_open ? 'trial' : 'standard'}">${d.verify_window_open ? `${d.verify_days_left} days left` : 'Window closed'}</span>
+      </div>
+      <div class="bl-sub" style="margin-bottom:10px">
+        ${d.verify_window_open
+          ? `Upload your SSM cert in the next <b>${d.verify_days_left} day${d.verify_days_left === 1 ? '' : 's'}</b> for Mikro-free OR 50% off for ${d.rules.early_bird_months} months.`
+          : `The 14-day early-bird window has closed. You can still verify, but you'll be billed at standard rates.`}
+      </div>
+      <input type="text" id="ssmNumberInput" placeholder="SSM number (e.g. 202401012345 or PG0123456-A)"
+        style="width:100%;padding:9px 11px;background:var(--card2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;font-family:var(--font);margin-bottom:8px"/>
+      <button onclick="ecoBillingPickSSM()"
+        style="width:100%;padding:10px;background:var(--accent);color:#fff;border:0;border-radius:8px;font-weight:700;cursor:pointer;font-family:var(--font)">
+        Upload SSM certificate
+      </button>
+      <div style="font-size:11px;color:var(--text3);margin-top:6px;line-height:1.4">
+        Gemini Vision reads the cert in 30 seconds. We never store your raw photo —
+        only the extracted fields are saved. Aligned with PDPA 2010.
+      </div>
+    </div>
+  `;
+
+  body.innerHTML = `
+    <div style="padding:14px 16px">
+      <!-- Tier -->
+      <div class="bl-card">
+        <div class="bl-row">
+          <div class="bl-label">Current Tier</div>
+          ${tierPill}
+        </div>
+        <div class="bl-sub" style="margin-top:6px">${escHtml(d.price_label || '')}</div>
+      </div>
+
+      <!-- Trial progress -->
+      ${d.trial_active ? `
+      <div class="bl-card">
+        <div class="bl-row">
+          <div class="bl-label">Trial Progress</div>
+          <div class="bl-value" style="font-size:14px">${d.trial_days_left} day${d.trial_days_left === 1 ? '' : 's'} left</div>
+        </div>
+        <div class="bl-progress"><span style="width:${trialPct}%"></span></div>
+        <div class="bl-sub">Trial ends ${d.trial_ends_at ? d.trial_ends_at.slice(0, 10) : ''}.</div>
+      </div>
+      ` : ''}
+
+      <!-- This-month usage -->
+      <div class="bl-card">
+        <div class="bl-row">
+          <div class="bl-label">This Month — ${escHtml(d.current_month || '')}</div>
+          <div class="bl-value">${d.queries_this_month}</div>
+        </div>
+        <div class="bl-sub">site analyses · estimated invoice <b>RM ${(d.estimated_invoice_rm || 0).toFixed(2)}</b>${d.first_invoice_at ? `, first bill on ${d.first_invoice_at.slice(0,10)}` : ''}</div>
+      </div>
+
+      ${verifyBlock}
+
+      <!-- Pricing rules -->
+      <div class="bl-card">
+        <div class="bl-row"><div class="bl-label">How Billing Works</div></div>
+        <div class="bl-sub">Each <b>site analysis</b> in Planner Mode = one query (RM ${d.rules.standard_query_price.toFixed(2)} at standard rate). Heatmap views are free. Invoices issued end-of-month.</div>
+        <div class="bl-rules-grid">
+          <div><b>Trial</b><br>${d.rules.trial_days} days free</div>
+          <div><b>Mikro</b><br>Free forever</div>
+          <div><b>Early Bird</b><br>${(d.rules.early_bird_discount * 100)|0}% off · ${d.rules.early_bird_months} months</div>
+          <div><b>First Invoice</b><br>${d.rules.invoice_grace_days} days after trial</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function ecoBillingPickSSM() {
+  const num = document.getElementById('ssmNumberInput').value.trim();
+  if (!num) {
+    ecoShowDemoToast('Please enter your SSM number first.');
+    return;
+  }
+  // Stash the typed number on the input so the file-change handler can read it
+  document.getElementById('ssmFileFromBilling').dataset.ssmNumber = num;
+  document.getElementById('ssmFileFromBilling').click();
+}
+
+async function ecoBillingSubmitSSM(input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  const num = input.dataset.ssmNumber || '';
+  if (!num) { ecoShowDemoToast('Missing SSM number — please re-enter.'); return; }
+
+  ecoShowDemoToast('Verifying SSM cert with Gemini Vision…');
+  try {
+    const form = new FormData();
+    form.append('ssm_number', num);
+    form.append('file', file);
+    const r = await fetch(`${API}/api/v1/billing/${USER.id}/verify-ssm`, {
+      method: 'POST',
+      body: form,
+    });
+    const d = await r.json();
+    ecoShowDemoToast(d.message || 'Verification result received.');
+    // Reload billing view
+    if (d.billing) {
+      _ecoBillingState = d.billing;
+      ecoRenderBilling(d.billing);
+      ecoRenderTrialBanner(d.billing);
+    } else {
+      ecoLoadBilling();
+    }
+  } catch(e) {
+    ecoShowDemoToast('Verification failed: ' + e.message);
+  } finally {
+    input.value = '';   // allow re-upload of same filename
+  }
+}
+
 // ─── Try to fetch geolocation for the agent (cached) ───
 function ecoTryGetPosition() {
   if (ecoUserPos) return Promise.resolve(ecoUserPos);
@@ -6376,8 +6761,11 @@ function ecoTryGetPosition() {
   const _origSendChat = window.sendChat;
   if (typeof _origSendChat !== 'function') return;
   window.sendChat = async function() {
-    // Trigger geolocation lazily on first chat use (best-effort, non-blocking)
-    if (!ecoUserPos) ecoTryGetPosition();   // fires permission prompt once
+    // Block until we have a position cached (or geolocation denied / failed).
+    // 4-second timeout inside ecoTryGetPosition so the chat never hangs.
+    if (!ecoUserPos) {
+      try { await ecoTryGetPosition(); } catch(e) {}
+    }
     return _origSendChat();
   };
 })();
@@ -6392,12 +6780,22 @@ function ecoBootV3() {
       clearInterval(tick);
       // Load profile (needed for OKU + saved Home/Work + account type)
       ecoLoadProfile().then(() => {
-        ecoLoadTodaySchedule();
-        ecoPollNotifications();
-        // Poll every 60s for new proactive notifications
-        setInterval(ecoPollNotifications, 60000);
-        // Refresh today card every 5 min so "minutes until" stays current
-        setInterval(ecoLoadTodaySchedule, 5 * 60 * 1000);
+        // Personal: schedules + notifications + try geolocation early
+        if (ecoAccountType !== 'business') {
+          ecoLoadTodaySchedule();
+          ecoPollNotifications();
+          setInterval(ecoPollNotifications, 60000);
+          setInterval(ecoLoadTodaySchedule, 5 * 60 * 1000);
+        }
+        // Business: load billing + show trial banner
+        if (ecoAccountType === 'business') {
+          ecoRefreshBilling();
+        }
+        // Try to get geolocation early so the AI agent can use "near me"
+        // without prompting on first chat. Permission is requested ONCE
+        // per session — denying just means the agent will fall back to
+        // asking for a place name.
+        ecoTryGetPosition();
       });
     } else if (attempts > 60) {
       clearInterval(tick);  // user never logged in (guest skipped)
@@ -6413,6 +6811,84 @@ window.addEventListener('load', () => {
 window.addEventListener('resize', () => {
   if (window.map) window.map.invalidateSize();
 });
+
+// ── LOCAL DEV OVERRIDE — Firebase auth bypass for localhost only ──────────────
+// Original Firebase authSubmit/authGoogle/logout are UNTOUCHED above.
+// This block only executes on localhost/127.0.0.1 — no-op on Cloud Run.
+if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+  function _mockId(email) {
+    let h = 0;
+    for (let i = 0; i < email.length; i++) h = (Math.imul(31, h) + email.charCodeAt(i)) | 0;
+    return 'local_' + Math.abs(h).toString(16).padStart(8, '0');
+  }
+  function _hp(p) {
+    let h = 5381;
+    for (let i = 0; i < p.length; i++) h = (Math.imul(h, 33) ^ p.charCodeAt(i)) | 0;
+    return Math.abs(h).toString(16);
+  }
+  function _lu() { try { return JSON.parse(localStorage.getItem('ef_lu') || '{}'); } catch(e) { return {}; } }
+  function _su(u) { localStorage.setItem('ef_lu', JSON.stringify(u)); }
+
+  window.authSubmit = async function() {
+    const isLogin  = document.getElementById('tabLogin').classList.contains('active');
+    const email    = document.getElementById('aEmail').value.trim();
+    const pass     = document.getElementById('aPass').value;
+    const name     = document.getElementById('aName').value.trim();
+    const errEl    = document.getElementById('aErr');
+    if (!email || !pass) {
+      errEl.textContent = "Please fill in all fields.";
+      errEl.classList.add('show');
+      return;
+    }
+    const users = _lu(), uid = _mockId(email), ph = _hp(pass);
+    if (isLogin) {
+      if (!users[email])          { errEl.textContent = "No account found. Sign up first."; errEl.classList.add('show'); return; }
+      if (users[email].ph !== ph) { errEl.textContent = "Incorrect password.";              errEl.classList.add('show'); return; }
+    } else {
+      if (users[email]) { errEl.textContent = "Email already registered. Log in instead."; errEl.classList.add('show'); return; }
+      users[email] = { ph, name: name || 'Eco Rider', uid };
+      _su(users);
+    }
+    const displayName = (isLogin ? users[email].name : name) || 'Eco Rider';
+    try {
+      await fetch(`${API}/api/v1/auth/sync`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: uid, email, name: displayName,
+          prefer_fast: 0.33, prefer_cheap: 0.33, prefer_green: 0.34, vehicle_type: "car" })
+      });
+    } catch(e) { console.warn('[DEV] Backend sync failed:', e); }
+
+    saveUser({ id: uid, name: displayName, email, guest: false });
+    hideAuth();
+    showToast(`Welcome, ${displayName}! 🌿`);
+
+    if (!isLogin) {
+      // FIX: hook that normally calls ecoFinaliseSignup was overridden — call it directly
+      if (typeof ecoFinaliseSignup === 'function') setTimeout(ecoFinaliseSignup, 500);
+    } else {
+      // FIX: restore account type from localStorage immediately on login
+      const cachedAcct = localStorage.getItem('ef_acct_' + uid);
+      if (cachedAcct === 'business' && typeof ecoApplyAccountType === 'function') {
+        ecoAccountType = 'business';
+        ecoApplyAccountType();
+      }
+    }
+  };
+
+  window.authGoogle = function() {
+    const errEl = document.getElementById('aErr');
+    errEl.textContent = "Google Sign-in is not available on localhost.";
+    errEl.classList.add('show');
+  };
+
+  window.logout = function() {
+    localStorage.removeItem('ecoflow_user');
+    location.reload();
+  };
+
+  console.log('%c[DEV MODE] Firebase auth bypassed for localhost', 'color:#22C55E;font-weight:bold');
+}
+// ── END LOCAL DEV OVERRIDE ────────────────────────────────────────────────────
 
 </script>
 </body>

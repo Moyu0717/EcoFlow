@@ -1,24 +1,28 @@
 # ── Web framework ──
-# fastapi 0.115+ accepts starlette 0.40-0.46 which matches genkit 0.5's
-# starlette>=0.46.1 dependency. Earlier fastapi 0.110 caps starlette<0.37
-# which clashes with genkit. DO NOT downgrade.
-fastapi>=0.115.0
-uvicorn[standard]>=0.27.0
-pydantic>=2.5.0
-python-dotenv>=1.0.0
-# multipart parser for file uploads (Mikro SSM cert verification)
-python-multipart>=0.0.9
- 
+# fastapi 0.136.1 requires starlette>=0.46.0, compatible with genkit's >=0.46.1
+fastapi==0.136.1
+starlette==1.0.0
+uvicorn[standard]==0.46.0
+pydantic==2.13.4
+python-dotenv==1.2.2
+# multipart parser for file uploads
+python-multipart==0.0.27
+
 # ── HTTP / utilities ──
-requests>=2.31.0
- 
+requests==2.33.1
+
 # ── Google AI Ecosystem Stack (Technical Mandate) ──
 # 1. The Intelligence (Brain): Gemini 2.5 Flash with function-calling + Vision
-google-generativeai>=0.8.0
+google-generativeai==0.8.6
 # 2. The Orchestrator: Firebase Genkit (agentic flow orchestration)
-genkit>=0.5.0
+#    NOTE: genkit 0.5.x requires dotpromptz-handlebars>=0.1.8 which has NO
+#    Windows binary wheel — installation fails on Windows. genkit 0.4.0 does
+#    NOT depend on dotpromptz at all and installs cleanly on all platforms.
+#    agent.py already has a try/except that falls back to raw Gemini if the
+#    Genkit plugin import fails, so functionality is fully preserved.
+genkit==0.4.0
 # 4. The Context: Vertex AI Search for RAG
-google-cloud-discoveryengine>=0.13.0
- 
+google-cloud-discoveryengine==0.19.0
+
 # ── Firebase (auth + Firestore persistence) ──
-firebase-admin>=6.4.0
+firebase-admin==7.4.0

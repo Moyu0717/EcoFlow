@@ -46,12 +46,55 @@ DATASTORE_ID = os.getenv("GCP_DATASTORE_ID", "ecoflow_1776621221780")
 MAPBOX_TOKEN = os.getenv("MAPBOX_TOKEN", "")
 
 # ============================================================
-# Firebase Init
+# Firebase / Firestore — with MockDB fallback for local dev
 # ============================================================
+
+# ── In-memory mock so the server starts even when Firebase is suspended ───────
+class _MockDoc:
+    def __init__(self, data=None):
+        self._data = data or {}
+        self.exists = bool(data)
+    def to_dict(self): return dict(self._data)
+
+class _MockDocRef:
+    def __init__(self, store, doc_id):
+        self._store = store; self._id = doc_id
+    def get(self): return _MockDoc(self._store.get(self._id))
+    def set(self, data, merge=False):
+        if merge and self._id in self._store:
+            self._store[self._id].update(data)
+        else:
+            self._store[self._id] = dict(data)
+    def update(self, data):
+        self._store.setdefault(self._id, {}).update(data)
+
+class _MockCollection:
+    def __init__(self): self._data = {}
+    def document(self, doc_id=None): return _MockDocRef(self._data, doc_id or "")
+    def where(self, *a, **k): return self
+    def order_by(self, *a, **k): return self
+    def limit(self, *a): return self
+    def stream(self): return iter([])
+
+class _MockDB:
+    def __init__(self): self._cols = {}
+    def collection(self, name):
+        return self._cols.setdefault(name, _MockCollection())
+
+class _MockFirestore:
+    SERVER_TIMESTAMP = None
+    class Query:
+        DESCENDING = "DESCENDING"
+    @staticmethod
+    def Increment(n): return n
+
+# ── Firebase Init ─────────────────────────────────────────────────────────────
+DB_BACKEND = "mock"
+db = _MockDB()
+_mock_firestore = _MockFirestore()
+
 if not firebase_admin._apps:
     try:
-        # On Cloud Run, if no key file is present, fall back to default
-        # credentials (the runtime service account).
         if os.path.exists(FIREBASE_KEY):
             cred = credentials.Certificate(FIREBASE_KEY)
             firebase_admin.initialize_app(cred)
@@ -61,7 +104,20 @@ if not firebase_admin._apps:
     except Exception as e:
         log.error(f"❌ Firebase init failed: {e}")
 
-db = firestore.client()
+try:
+    _fs_client = firestore.client()
+    # Quick probe — will raise if suspended
+    _fs_client.collection("_health").document("ping").get()
+    db = _fs_client
+    DB_BACKEND = "firestore"
+    log.info("✅ Firestore connected")
+except Exception as e:
+    log.warning(f"⚠️  Firestore unavailable ({e.__class__.__name__}) — using in-memory store. "
+                "Data won't persist but app will run for demo.")
+    # Patch firestore sentinel values so existing code doesn't break
+    firestore.SERVER_TIMESTAMP = None          # type: ignore[attr-defined]
+    firestore.Increment = lambda n: n          # type: ignore[attr-defined]
+    firestore.Query = _MockFirestore.Query     # type: ignore[attr-defined]
 
 # ============================================================
 # Gemini AI Init  ← FIXED: use google-generativeai (stable)
@@ -80,8 +136,24 @@ if GEMINI_API_KEY:
         log.info(f"✅ Gemini connected — test: {test.text.strip()[:20]}")
     except Exception as e:
         log.warning(f"⚠️  Gemini unavailable ({e}) — using smart fallback responses")
+        gemini_model = None
 else:
     log.warning("⚠️  GEMINI_API_KEY not set in .env — AI features using fallback")
+
+# ============================================================
+# Groq AI Init  ← fallback when Gemini is suspended
+# ============================================================
+groq_model = None
+try:
+    from groq import Groq as _Groq
+    _groq_key = os.getenv("GROQ_API_KEY", "")
+    if _groq_key:
+        groq_model = _Groq(api_key=_groq_key)
+        log.info("✅ Groq client ready (AI fallback)")
+    else:
+        log.warning("⚠️  GROQ_API_KEY not set — no AI fallback")
+except Exception as _groq_err:
+    log.warning(f"⚠️  Groq unavailable: {_groq_err}")
 
 # ============================================================
 # FastAPI App
@@ -472,13 +544,27 @@ def search_rag_with_sources(query: str) -> dict:
 
 
 def call_gemini(prompt: str, fallback: str = "") -> str:
-    """Call Gemini with a safe fallback."""
+    """Call Gemini with Groq fallback, then rule-based fallback."""
+    # 1. Try Gemini
     if gemini_model:
         try:
             resp = gemini_model.generate_content(prompt)
             return resp.text.strip()
         except Exception as e:
             log.warning(f"Gemini call failed: {e}")
+    # 2. Try Groq
+    if groq_model:
+        try:
+            resp = groq_model.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=300,
+                temperature=0.7,
+            )
+            return resp.choices[0].message.content.strip()
+        except Exception as e:
+            log.warning(f"Groq call failed: {e}")
+    # 3. Rule-based fallback
     return fallback or "🌱 Great choice making an eco-friendly commute!"
 
 def smart_fallback(mode: str, context: str = "") -> str:
@@ -1464,10 +1550,13 @@ def multi_stop_optimise(req: MultiStopRequest):
 # ============================================================
 # Mount the new routers
 #  • schedules  → /api/v1/schedules/*    (Proactive Agent + CRUD)
-#  • planner    → /api/v1/planner/*      (Planner Mode + Mikro Vision)
+#  • planner    → /api/v1/planner/*      (Planner Mode + heatmap)
+#  • billing    → /api/v1/billing/*      (Trial, SSM verify, invoicing)
 # ============================================================
 from schedules import schedules_router
 from planner   import planner_router
+from billing   import billing_router
 
 app.include_router(schedules_router)
 app.include_router(planner_router)
+app.include_router(billing_router)

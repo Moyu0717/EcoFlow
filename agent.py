@@ -42,8 +42,20 @@ except Exception as _genkit_err:          # SDK not installed / wrong version
     ai = None
     log.warning(f"⚠️  Genkit unavailable ({_genkit_err}), falling back to raw Gemini")
 
-# Fallback: raw google-generativeai (always available)
 import google.generativeai as genai
+
+# ── Groq fallback init ────────────────────────────────────────────────────────
+groq_client = None
+try:
+    from groq import Groq as _Groq
+    _groq_key = os.getenv("GROQ_API_KEY", "")
+    if _groq_key:
+        groq_client = _Groq(api_key=_groq_key)
+        log.info("✅ Groq agent fallback ready")
+    else:
+        log.warning("⚠️  GROQ_API_KEY not set — agent has no AI fallback")
+except Exception as _ge:
+    log.warning(f"⚠️  Groq init failed: {_ge}")
 
 # ── FastAPI router ────────────────────────────────────────────────────────────
 agent_router = APIRouter(prefix="/api/v1/agent", tags=["Agent"])
@@ -585,87 +597,194 @@ if GENKIT_AVAILABLE:
         }
 
 
+# ── Groq agent fallback ───────────────────────────────────────────────────────
+def _run_groq_agent(req: AgentRequest) -> dict:
+    """Groq llama-3.3-70b with OpenAI-compatible tool calling — used when Gemini is down."""
+    if not groq_client:
+        return {
+            "reply": "🌱 AI services are temporarily unavailable. Route calculations still work — use the routing tab!",
+            "tools_used": [], "agent_steps": 0,
+            "model": "offline", "orchestrator": "static-fallback",
+        }
+
+    # Convert Google-format TOOL_SCHEMAS → OpenAI format (Groq is OAI-compatible)
+    groq_tools = [{"type": "function", "function": s} for s in TOOL_SCHEMAS]
+
+    loc_hint = ""
+    if req.user_lat is not None and req.user_lon is not None:
+        loc_hint = (f"\n[User location: lat={req.user_lat:.5f}, lon={req.user_lon:.5f}. "
+                    "Use these for 'near me' / 'nearby' queries.]")
+    ctx_blob  = f"\n[Context: {json.dumps(req.context)}]" if req.context else ""
+    lang_hint = {"zh": "Reply in 中文.", "ms": "Reply in Bahasa Melayu.",
+                 "en": "Reply in English."}.get(req.language or "en", "Reply in English.")
+
+    messages = [
+        {"role": "system", "content": SYSTEM_INSTRUCTION},
+        {"role": "user",   "content": f"{req.message}{ctx_blob}{loc_hint}\n\n({lang_hint})"},
+    ]
+    tool_trace: List[Dict[str, Any]] = []
+
+    try:
+        for step in range(5):
+            response = groq_client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=messages,
+                tools=groq_tools,
+                tool_choice="auto",
+                max_tokens=1024,
+                temperature=0.3,
+            )
+            msg = response.choices[0].message
+
+            if not msg.tool_calls:
+                return {
+                    "reply": msg.content or "🌱 Please rephrase or share your route.",
+                    "tools_used": [t["tool"] for t in tool_trace],
+                    "trace": tool_trace,
+                    "agent_steps": len(tool_trace),
+                    "model": "llama-3.3-70b-versatile",
+                    "orchestrator": "Groq (Gemini suspended fallback)",
+                }
+
+            # Add assistant turn with tool calls
+            messages.append({
+                "role": "assistant",
+                "content": msg.content or "",
+                "tool_calls": [
+                    {"id": tc.id, "type": "function",
+                     "function": {"name": tc.function.name, "arguments": tc.function.arguments}}
+                    for tc in msg.tool_calls
+                ],
+            })
+
+            # Execute each tool and feed result back
+            for tc in msg.tool_calls:
+                tool_name = tc.function.name
+                try:
+                    tool_args = json.loads(tc.function.arguments)
+                except Exception:
+                    tool_args = {}
+
+                if tool_name == "search_places_by_intent":
+                    if "near_lat" not in tool_args and req.user_lat is not None:
+                        tool_args["near_lat"] = req.user_lat
+                    if "near_lon" not in tool_args and req.user_lon is not None:
+                        tool_args["near_lon"] = req.user_lon
+
+                log.info(f"[Groq step {step+1}] → {tool_name}({tool_args})")
+                try:
+                    tool_result = _run_tool(tool_name, tool_args, req.user_id)
+                except Exception as e:
+                    tool_result = {"error": str(e)}
+
+                tool_trace.append({"tool": tool_name, "args": tool_args,
+                                   "result_preview": _preview(tool_result)})
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tc.id,
+                    "content": json.dumps(tool_result, default=str),
+                })
+
+    except Exception as e:
+        log.error(f"Groq agent error: {e}")
+        return {
+            "reply": "🌱 AI temporarily unavailable. Route data still works — check the routing tab!",
+            "tools_used": [], "agent_steps": 0,
+            "model": "groq-error", "orchestrator": "static-fallback",
+        }
+
+    return {
+        "reply": "🌱 Please rephrase or share your route.",
+        "tools_used": [t["tool"] for t in tool_trace],
+        "agent_steps": len(tool_trace),
+        "model": "llama-3.3-70b-versatile",
+        "orchestrator": "Groq (Gemini suspended fallback)",
+    }
+
+
 # ── Raw Gemini fallback (same logic, no Genkit) ───────────────────────────────
 def _run_raw_agent(req: AgentRequest) -> dict:
     api_key = os.getenv("GEMINI_API_KEY", "")
     if not api_key:
-        raise RuntimeError("GEMINI_API_KEY not set")
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel(
-        model_name="gemini-2.5-flash",
-        tools=[{"function_declarations": TOOL_SCHEMAS}],
-        system_instruction=SYSTEM_INSTRUCTION,
-        generation_config={"temperature": 0.3, "max_output_tokens": 1024},
-    )
+        log.info("No Gemini key → routing to Groq agent")
+        return _run_groq_agent(req)
 
-    # Build the location hint that becomes part of the user's prompt — the
-    # agent will use this to resolve "near me" / "nearby" without asking.
-    loc_hint = ""
-    if req.user_lat is not None and req.user_lon is not None:
-        loc_hint = (f"\n[User's current location: lat={req.user_lat:.5f}, "
-                    f"lon={req.user_lon:.5f}. When the user says 'near me', "
-                    "'nearby' or 'around here', use these coordinates as the "
-                    "search centre — DO NOT ask them for coordinates.]")
-
-    ctx_blob  = f"\n[Context: {json.dumps(req.context)}]" if req.context else ""
-    lang_hint = {"zh": "Reply in 中文.", "ms": "Reply in Bahasa Melayu.",
-                 "en": "Reply in English."}.get(req.language or "en", "Reply in English.")
-    chat      = model.start_chat(enable_automatic_function_calling=False)
-    response  = chat.send_message(f"{req.message}{ctx_blob}{loc_hint}\n\n({lang_hint})")
-    tool_trace: List[Dict[str, Any]] = []
-
-    for step in range(5):
-        fc = None
-        try:
-            for p in response.candidates[0].content.parts:
-                if getattr(p, "function_call", None) and p.function_call.name:
-                    fc = p.function_call
-                    break
-        except (AttributeError, IndexError):
-            pass
-        if not fc:
-            break
-        tool_name = fc.name
-        tool_args = dict(fc.args) if fc.args else {}
-
-        # Auto-inject user location for tools that need a near_lat/near_lon
-        # if the model didn't provide one. This is what makes "find nasi
-        # lemak nearby" actually work without the user typing coords.
-        if tool_name == "search_places_by_intent":
-            if "near_lat" not in tool_args and req.user_lat is not None:
-                tool_args["near_lat"] = req.user_lat
-            if "near_lon" not in tool_args and req.user_lon is not None:
-                tool_args["near_lon"] = req.user_lon
-
-        log.info(f"[step {step+1}] → {tool_name}({tool_args})")
-        try:
-            tool_result = _run_tool(tool_name, tool_args, req.user_id)
-        except Exception as e:
-            tool_result = {"error": str(e)}
-        tool_trace.append({"tool": tool_name, "args": tool_args,
-                            "result_preview": _preview(tool_result)})
-        response = chat.send_message(
-            genai.protos.Content(parts=[genai.protos.Part(
-                function_response=genai.protos.FunctionResponse(
-                    name=tool_name, response=tool_result))])
+    try:
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel(
+            model_name="gemini-2.5-flash",
+            tools=[{"function_declarations": TOOL_SCHEMAS}],
+            system_instruction=SYSTEM_INSTRUCTION,
+            generation_config={"temperature": 0.3, "max_output_tokens": 1024},
         )
 
-    final_text = ""
-    try:
-        for p in response.candidates[0].content.parts:
-            if getattr(p, "text", None):
-                final_text += p.text
-    except (AttributeError, IndexError):
-        pass
+        loc_hint = ""
+        if req.user_lat is not None and req.user_lon is not None:
+            loc_hint = (f"\n[User's current location: lat={req.user_lat:.5f}, "
+                        f"lon={req.user_lon:.5f}. When the user says 'near me', "
+                        "'nearby' or 'around here', use these coordinates as the "
+                        "search centre — DO NOT ask them for coordinates.]")
 
-    return {
-        "reply": final_text.strip() or "🌱 Please rephrase or share your route.",
-        "tools_used": [t["tool"] for t in tool_trace],
-        "trace": tool_trace,
-        "agent_steps": len(tool_trace),
-        "model": "gemini-2.5-flash",
-        "orchestrator": "Gemini native function-calling",
-    }
+        ctx_blob  = f"\n[Context: {json.dumps(req.context)}]" if req.context else ""
+        lang_hint = {"zh": "Reply in 中文.", "ms": "Reply in Bahasa Melayu.",
+                     "en": "Reply in English."}.get(req.language or "en", "Reply in English.")
+        chat      = model.start_chat(enable_automatic_function_calling=False)
+        response  = chat.send_message(f"{req.message}{ctx_blob}{loc_hint}\n\n({lang_hint})")
+        tool_trace: List[Dict[str, Any]] = []
+
+        for step in range(5):
+            fc = None
+            try:
+                for p in response.candidates[0].content.parts:
+                    if getattr(p, "function_call", None) and p.function_call.name:
+                        fc = p.function_call
+                        break
+            except (AttributeError, IndexError):
+                pass
+            if not fc:
+                break
+            tool_name = fc.name
+            tool_args = dict(fc.args) if fc.args else {}
+
+            if tool_name == "search_places_by_intent":
+                if "near_lat" not in tool_args and req.user_lat is not None:
+                    tool_args["near_lat"] = req.user_lat
+                if "near_lon" not in tool_args and req.user_lon is not None:
+                    tool_args["near_lon"] = req.user_lon
+
+            log.info(f"[step {step+1}] → {tool_name}({tool_args})")
+            try:
+                tool_result = _run_tool(tool_name, tool_args, req.user_id)
+            except Exception as e:
+                tool_result = {"error": str(e)}
+            tool_trace.append({"tool": tool_name, "args": tool_args,
+                                "result_preview": _preview(tool_result)})
+            response = chat.send_message(
+                genai.protos.Content(parts=[genai.protos.Part(
+                    function_response=genai.protos.FunctionResponse(
+                        name=tool_name, response=tool_result))])
+            )
+
+        final_text = ""
+        try:
+            for p in response.candidates[0].content.parts:
+                if getattr(p, "text", None):
+                    final_text += p.text
+        except (AttributeError, IndexError):
+            pass
+
+        return {
+            "reply": final_text.strip() or "🌱 Please rephrase or share your route.",
+            "tools_used": [t["tool"] for t in tool_trace],
+            "trace": tool_trace,
+            "agent_steps": len(tool_trace),
+            "model": "gemini-2.5-flash",
+            "orchestrator": "Gemini native function-calling",
+        }
+
+    except Exception as e:
+        log.warning(f"Gemini agent failed ({e.__class__.__name__}: {e}) — trying Groq fallback")
+        return _run_groq_agent(req)
 
 
 # ── FastAPI endpoint ──────────────────────────────────────────────────────────
@@ -674,8 +793,8 @@ async def run_agent(req: AgentRequest):
     """
     EcoFlow Agentic endpoint.
     Primary path  : Firebase Genkit @flow  (ecoflow_agent_flow)
-    Fallback path : Raw Gemini function-calling loop
-    Both paths implement the Chat→Action mandate from the Technical Mandate.
+    Fallback path : Raw Gemini function-calling  (_run_raw_agent)
+    Final fallback: Groq llama-3.3-70b           (_run_groq_agent)
     """
     try:
         if GENKIT_AVAILABLE:
@@ -687,7 +806,7 @@ async def run_agent(req: AgentRequest):
                 "language": req.language,
             })
         else:
-            log.info("⚙️  Running via raw Gemini (Genkit unavailable)")
+            log.info("⚙️  Running via Gemini / Groq fallback")
             result = _run_raw_agent(req)
         return result
     except Exception as e:
