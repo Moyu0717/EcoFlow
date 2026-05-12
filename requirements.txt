@@ -21,6 +21,10 @@ google-generativeai==0.8.6
 #    agent.py already has a try/except that falls back to raw Gemini if the
 #    Genkit plugin import fails, so functionality is fully preserved.
 genkit==0.4.0
+# 3. The Fallback Brain: Groq (free Llama 3.3 70B) — only used if the user's
+#    GCP project is suspended / Gemini is unreachable. Set GROQ_API_KEY in
+#    .env to enable; agent.py auto-falls-back when it's available.
+groq==0.13.0
 # 4. The Context: Vertex AI Search for RAG
 google-cloud-discoveryengine==0.19.0
 
