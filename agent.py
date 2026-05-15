@@ -19,30 +19,85 @@ Architecture:
 import os
 import json
 import logging
+import importlib
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 log = logging.getLogger("ecoflow.agent")
 
 # ── Genkit initialisation ─────────────────────────────────────────────────────
-try:
-    from genkit import Genkit
-    from genkit.plugins.google_ai import GoogleAI
-
-    ai = Genkit(
-        plugins=[GoogleAI(api_key=os.getenv("GEMINI_API_KEY", ""))],
-    )
-    GENKIT_AVAILABLE = True
-    log.info("✅ Firebase Genkit initialised")
-except Exception as _genkit_err:          # SDK not installed / wrong version
-    GENKIT_AVAILABLE = False
-    ai = None
-    log.warning(f"⚠️  Genkit unavailable ({_genkit_err}), falling back to raw Gemini")
-
 import google.generativeai as genai
+
+# Current Python Genkit docs use genkit.plugins.google_genai.GoogleAI.
+# Older builds used google_ai, so we probe both and expose the exact error in
+# /api/v1/agent/health instead of silently pretending Genkit is live.
+GENKIT_AVAILABLE = False
+GENKIT_INIT_ERROR: Optional[str] = None
+ai = None
+
+
+def _build_genkit(GenkitCls, GoogleAICls, api_key: str):
+    """Construct Genkit across SDK versions with slightly different signatures."""
+    errors = []
+    for plugin_factory in (
+        lambda: GoogleAICls(api_key=api_key),
+        lambda: GoogleAICls(),
+    ):
+        try:
+            plugin = plugin_factory()
+        except Exception as e:
+            errors.append(f"plugin {type(e).__name__}: {e}")
+            continue
+        for kwargs in (
+            {"plugins": [plugin], "model": "googleai/gemini-2.5-flash-lite"},
+            {"plugins": [plugin]},
+        ):
+            try:
+                return GenkitCls(**kwargs)
+            except Exception as e:
+                errors.append(f"Genkit {type(e).__name__}: {e}")
+    raise RuntimeError("; ".join(errors) or "unknown Genkit constructor failure")
+
+
+def _try_init_genkit():
+    global ai, GENKIT_AVAILABLE, GENKIT_INIT_ERROR
+    GENKIT_AVAILABLE = False
+    api_key = os.getenv("GEMINI_API_KEY", "")
+    if not api_key:
+        GENKIT_INIT_ERROR = "GEMINI_API_KEY is not set"
+        ai = None
+        return
+
+    candidates = [
+        ("official", "genkit", "genkit.plugins.google_genai"),
+        ("legacy-plugin", "genkit", "genkit.plugins.google_ai"),
+        ("genkit-ai", "genkit_ai", "genkit_ai.plugins.google_genai"),
+        ("genkit-ai-legacy-plugin", "genkit_ai", "genkit_ai.plugins.google_ai"),
+    ]
+    errors = []
+    for label, genkit_mod_name, plugin_mod_name in candidates:
+        try:
+            genkit_mod = importlib.import_module(genkit_mod_name)
+            plugin_mod = importlib.import_module(plugin_mod_name)
+            GenkitCls = getattr(genkit_mod, "Genkit")
+            GoogleAICls = getattr(plugin_mod, "GoogleAI")
+            ai = _build_genkit(GenkitCls, GoogleAICls, api_key)
+            GENKIT_AVAILABLE = True
+            GENKIT_INIT_ERROR = None
+            log.info(f"Genkit initialised ({label})")
+            return
+        except Exception as e:
+            errors.append(f"{label}: {type(e).__name__}: {e}")
+
+    GENKIT_INIT_ERROR = " | ".join(errors)
+    ai = None
+    log.warning(f"Genkit unavailable, raw Gemini fallback. Reason: {GENKIT_INIT_ERROR}")
+
+
+_try_init_genkit()
 
 # ── Groq fallback init ────────────────────────────────────────────────────────
 groq_client = None
@@ -60,6 +115,16 @@ except Exception as _ge:
 # ── FastAPI router ────────────────────────────────────────────────────────────
 agent_router = APIRouter(prefix="/api/v1/agent", tags=["Agent"])
 
+@agent_router.get("/health")
+def agent_health():
+    return {
+        "genkit_available": GENKIT_AVAILABLE,
+        "genkit_init_error": GENKIT_INIT_ERROR,
+        "gemini_key_set": bool(os.getenv("GEMINI_API_KEY")),
+        "groq_key_set": bool(os.getenv("GROQ_API_KEY")),
+        "disable_genkit_env": os.getenv("DISABLE_GENKIT", ""),
+    }
+
 
 # ── Request model ─────────────────────────────────────────────────────────────
 class AgentRequest(BaseModel):
@@ -72,6 +137,27 @@ class AgentRequest(BaseModel):
     # for their lat/lon (which normal users obviously don't know).
     user_lat: Optional[float] = None
     user_lon: Optional[float] = None
+
+
+class PlanCommuteToolInput(BaseModel):
+    start_lat: float = Field(description="Start latitude")
+    start_lon: float = Field(description="Start longitude")
+    end_lat: float = Field(description="Destination latitude")
+    end_lon: float = Field(description="Destination longitude")
+    departure_time: str = Field(default="", description="Optional departure time")
+    vehicle_type: str = Field(default="car", description="Vehicle type, usually car")
+
+
+class FindCarpoolToolInput(BaseModel):
+    start_lat: float = Field(description="Start latitude")
+    start_lon: float = Field(description="Start longitude")
+    end_lat: float = Field(description="Destination latitude")
+    end_lon: float = Field(description="Destination longitude")
+    max_detour_km: float = Field(default=2.0, description="Maximum acceptable detour in km")
+
+
+class SearchPolicyToolInput(BaseModel):
+    query: str = Field(description="Malaysia transport or green policy search query")
 
 
 # ── Gemini tool schemas (used by both Genkit and raw-Gemini paths) ────────────
@@ -551,28 +637,24 @@ def _run_tool(name: str, args: Dict[str, Any], user_id: str) -> Dict[str, Any]:
 
 if GENKIT_AVAILABLE:
     @ai.tool(description="Plan eco-friendly commute routes in Malaysia with CO2 and cost data")
-    def plan_commute_tool(start_lat: float, start_lon: float,
-                          end_lat: float, end_lon: float,
-                          departure_time: str = "", vehicle_type: str = "car") -> dict:
+    async def plan_commute_tool(input: PlanCommuteToolInput) -> dict:
         return _run_tool("plan_commute", {
-            "start_lat": start_lat, "start_lon": start_lon,
-            "end_lat": end_lat, "end_lon": end_lon,
-            "departure_time": departure_time, "vehicle_type": vehicle_type,
+            "start_lat": input.start_lat, "start_lon": input.start_lon,
+            "end_lat": input.end_lat, "end_lon": input.end_lon,
+            "departure_time": input.departure_time, "vehicle_type": input.vehicle_type,
         }, user_id="")
 
     @ai.tool(description="Find carpool matches for a given route in Malaysia")
-    def find_carpool_tool(start_lat: float, start_lon: float,
-                          end_lat: float, end_lon: float,
-                          max_detour_km: float = 2.0) -> dict:
+    async def find_carpool_tool(input: FindCarpoolToolInput) -> dict:
         return _run_tool("find_carpool_matches", {
-            "start_lat": start_lat, "start_lon": start_lon,
-            "end_lat": end_lat, "end_lon": end_lon,
-            "max_detour_km": max_detour_km,
+            "start_lat": input.start_lat, "start_lon": input.start_lon,
+            "end_lat": input.end_lat, "end_lon": input.end_lon,
+            "max_detour_km": input.max_detour_km,
         }, user_id="")
 
     @ai.tool(description="Search Malaysia transport policy and NETR via Vertex AI RAG")
-    def search_policy_tool(query: str) -> dict:
-        return _run_tool("search_malaysia_policy", {"query": query}, user_id="")
+    async def search_policy_tool(input: SearchPolicyToolInput) -> dict:
+        return _run_tool("search_malaysia_policy", {"query": input.query}, user_id="")
 
     @ai.flow()
     async def ecoflow_agent_flow(request: dict) -> dict:
@@ -581,18 +663,29 @@ if GENKIT_AVAILABLE:
         Gemini picks tools, observes results, chains up to 4 steps,
         then returns a grounded final answer.
         """
+        loc_hint = ""
+        if request.get("user_lat") is not None and request.get("user_lon") is not None:
+            loc_hint = (
+                f"\n[User location: lat={request['user_lat']:.5f}, "
+                f"lon={request['user_lon']:.5f}. Use for 'near me' queries.]"
+            )
+        lang_hint = {"zh": "Reply in 中文.", "ms": "Reply in Bahasa Melayu."}.get(
+            request.get("language", "en"), "Reply in English."
+        )
         response = await ai.generate(
-            model="googleai/gemini-2.5-flash",
+            model="googleai/gemini-2.5-flash-lite",
             system=SYSTEM_INSTRUCTION,
-            prompt=request.get("message", ""),
+            prompt=f"{request.get('message', '')}{loc_hint}\n\n({lang_hint})",
             tools=[plan_commute_tool, find_carpool_tool, search_policy_tool],
             config={"temperature": 0.3, "maxOutputTokens": 1024},
         )
+        place_results: list = []
         return {
             "reply": response.text,
             "tools_used": [t.name for t in (response.tool_requests or [])],
+            "place_results": place_results,
             "agent_steps": len(response.tool_requests or []),
-            "model": "gemini-2.5-flash",
+            "model": "gemini-2.5-flash-lite",
             "orchestrator": "Firebase Genkit",
         }
 
@@ -605,6 +698,7 @@ def _run_groq_agent(req: AgentRequest) -> dict:
             "reply": "🌱 AI services are temporarily unavailable. Route calculations still work — use the routing tab!",
             "tools_used": [], "agent_steps": 0,
             "model": "offline", "orchestrator": "static-fallback",
+            "fallback_reason": "GROQ_API_KEY not set",
         }
 
     # Convert Google-format TOOL_SCHEMAS → OpenAI format (Groq is OAI-compatible)
@@ -711,12 +805,31 @@ def _run_raw_agent(req: AgentRequest) -> dict:
 
     try:
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel(
-            model_name="gemini-2.5-flash",
-            tools=[{"function_declarations": TOOL_SCHEMAS}],
-            system_instruction=SYSTEM_INSTRUCTION,
-            generation_config={"temperature": 0.3, "max_output_tokens": 1024},
-        )
+        _GEMINI_MODELS = [
+            "gemini-2.5-flash-lite",
+            "gemini-2.5-flash-lite",
+            "gemini-2.0-flash",
+            "gemini-1.5-flash",
+        ]
+        model = None
+        model_used = "gemini-unavailable"
+        for _mn in _GEMINI_MODELS:
+            try:
+                model = genai.GenerativeModel(
+                    model_name=_mn,
+                    tools=[{"function_declarations": TOOL_SCHEMAS}],
+                    system_instruction=SYSTEM_INSTRUCTION,
+                    generation_config={"temperature": 0.3, "max_output_tokens": 1024},
+                )
+                model_used = _mn
+                log.info(f"✅ Gemini model: {_mn}")
+                break
+            except Exception:
+                continue
+        if model is None:
+            result = _run_groq_agent(req)
+            result["raw_gemini_error"] = "No configured Gemini model could be constructed"
+            return result
 
         loc_hint = ""
         if req.user_lat is not None and req.user_lon is not None:
@@ -731,6 +844,7 @@ def _run_raw_agent(req: AgentRequest) -> dict:
         chat      = model.start_chat(enable_automatic_function_calling=False)
         response  = chat.send_message(f"{req.message}{ctx_blob}{loc_hint}\n\n({lang_hint})")
         tool_trace: List[Dict[str, Any]] = []
+        _place_results: list = []
 
         for step in range(5):
             fc = None
@@ -757,6 +871,19 @@ def _run_raw_agent(req: AgentRequest) -> dict:
                 tool_result = _run_tool(tool_name, tool_args, req.user_id)
             except Exception as e:
                 tool_result = {"error": str(e)}
+            if tool_name == "search_places_by_intent":
+                raw = tool_result.get("results", [])
+                _place_results = [
+                    {
+                        "name": p.get("name", ""),
+                        "lat": p.get("lat"),
+                        "lon": p.get("lon"),
+                        "distance_km": p.get("distance_km"),
+                        "category": p.get("category", ""),
+                    }
+                    for p in raw[:5]
+                    if p.get("lat") is not None and p.get("lon") is not None
+                ]
             tool_trace.append({"tool": tool_name, "args": tool_args,
                                 "result_preview": _preview(tool_result)})
             response = chat.send_message(
@@ -776,15 +903,18 @@ def _run_raw_agent(req: AgentRequest) -> dict:
         return {
             "reply": final_text.strip() or "🌱 Please rephrase or share your route.",
             "tools_used": [t["tool"] for t in tool_trace],
+            "place_results": _place_results,
             "trace": tool_trace,
             "agent_steps": len(tool_trace),
-            "model": "gemini-2.5-flash",
+            "model": model_used,
             "orchestrator": "Gemini native function-calling",
         }
 
     except Exception as e:
         log.warning(f"Gemini agent failed ({e.__class__.__name__}: {e}) — trying Groq fallback")
-        return _run_groq_agent(req)
+        result = _run_groq_agent(req)
+        result["raw_gemini_error"] = f"{type(e).__name__}: {e}"
+        return result
 
 
 # ── FastAPI endpoint ──────────────────────────────────────────────────────────
@@ -796,22 +926,46 @@ async def run_agent(req: AgentRequest):
     Fallback path : Raw Gemini function-calling  (_run_raw_agent)
     Final fallback: Groq llama-3.3-70b           (_run_groq_agent)
     """
-    try:
-        if GENKIT_AVAILABLE:
+    disable_genkit = os.getenv("DISABLE_GENKIT", "").strip().lower() in ("1", "true", "yes")
+    genkit_status = {
+        "available": GENKIT_AVAILABLE,
+        "disabled_by_env": disable_genkit,
+        "init_error": GENKIT_INIT_ERROR,
+    }
+    if GENKIT_AVAILABLE and not disable_genkit:
+        try:
             log.info("🔥 Running via Firebase Genkit flow")
             result = await ecoflow_agent_flow({
                 "message": req.message,
                 "user_id": req.user_id,
                 "context": req.context,
                 "language": req.language,
+                "user_lat": req.user_lat,
+                "user_lon": req.user_lon,
             })
-        else:
-            log.info("⚙️  Running via Gemini / Groq fallback")
-            result = _run_raw_agent(req)
+            result["genkit_status"] = genkit_status
+            return result
+        except Exception as genkit_err:
+            log.warning(f"⚠️  Genkit flow failed ({genkit_err.__class__.__name__}: {genkit_err}) — falling back to raw Gemini")
+            genkit_status["runtime_error"] = f"{type(genkit_err).__name__}: {genkit_err}"
+
+    log.info("⚙️  Running via Gemini / Groq fallback")
+    try:
+        result = _run_raw_agent(req)
+        if result.get("raw_gemini_error"):
+            genkit_status["raw_gemini_error"] = result["raw_gemini_error"]
+        result["genkit_status"] = genkit_status
         return result
     except Exception as e:
-        log.error(f"Agent error: {e}", exc_info=True)
-        raise HTTPException(500, f"Agent error: {e}")
+        log.error(f"All agent paths failed: {e}", exc_info=True)
+        return {
+            "reply": "🌱 AI services are temporarily unavailable. Route calculations still work — use the routing tab!",
+            "tools_used": [],
+            "agent_steps": 0,
+            "model": "offline",
+            "orchestrator": "static-fallback",
+            "genkit_status": genkit_status,
+        }
 
 
 def _preview(obj: Any, max_len: int = 400) -> Any:

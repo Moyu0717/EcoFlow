@@ -13,14 +13,15 @@ requests==2.33.1
 
 # ── Google AI Ecosystem Stack (Technical Mandate) ──
 # 1. The Intelligence (Brain): Gemini 2.5 Flash with function-calling + Vision
-google-generativeai==0.8.6
+google-generativeai>=0.8.0,<1.0
 # 2. The Orchestrator: Firebase Genkit (agentic flow orchestration)
 #    NOTE: genkit 0.5.x requires dotpromptz-handlebars>=0.1.8 which has NO
 #    Windows binary wheel — installation fails on Windows. genkit 0.4.0 does
 #    NOT depend on dotpromptz at all and installs cleanly on all platforms.
 #    agent.py already has a try/except that falls back to raw Gemini if the
 #    Genkit plugin import fails, so functionality is fully preserved.
-genkit==0.4.0
+genkit>=0.4.0,<2.0
+genkit-plugin-google-genai>=0.4.0,<2.0
 # 3. The Fallback Brain: Groq (free Llama 3.3 70B) — only used if the user's
 #    GCP project is suspended / Gemini is unreachable. Set GROQ_API_KEY in
 #    .env to enable; agent.py auto-falls-back when it's available.

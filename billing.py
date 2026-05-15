@@ -175,7 +175,7 @@ async def verify_ssm(
     try:
         import google.generativeai as genai
         vision = genai.GenerativeModel(
-            "gemini-2.5-flash",
+            "gemini-2.5-flash-lite",
             generation_config={
                 "temperature": 0.0,
                 "max_output_tokens": 600,

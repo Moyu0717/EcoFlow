@@ -10,6 +10,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 <style>
 /* ═══════════════════════════════════════════════════════
    ECOFLOW DESIGN SYSTEM v4.0 — Redesigned Layout
@@ -142,7 +143,7 @@ body.map-night .fab:not(.primary) {
    LEFT NAV RAIL (vertical)
    ═══════════════════════════════════════════════════════ */
 #navRail{
-  position:fixed;top:0;bottom:0;left:0;z-index:1200;width:var(--rail-w);
+  position:fixed;top:0;bottom:0;left:0;z-index:2600;width:var(--rail-w);
   background:var(--surface);border-right:1px solid var(--border);
   display:flex;flex-direction:column;align-items:center;padding:14px 0;gap:4px;
   backdrop-filter:blur(20px);
@@ -173,7 +174,7 @@ body.map-night .fab:not(.primary) {
   background:var(--card2);color:var(--text);font-size:12px;font-weight:600;
   padding:6px 10px;border-radius:8px;border:1px solid var(--border);
   white-space:nowrap;opacity:0;pointer-events:none;transition:var(--transition);
-  box-shadow:var(--shadow-sm);z-index:1500;
+  box-shadow:var(--shadow-sm);z-index:5000;
 }
 .rail-item:hover .rail-tt{opacity:1;transform:translateY(-50%) translateX(0)}
 .rail-spacer{flex:1}
@@ -1172,55 +1173,137 @@ body.side-panel-open #searchWrap {
 /* ─── Proactive Agent toast (the demo "WOW" moment) ─────────────── */
 #proactiveToast{
   position:fixed;
-  top:24px;
-  left:50%;
-  transform:translateX(-50%) translateY(-150%);
-  width:min(440px, 92vw);
-  background:linear-gradient(180deg, var(--surface) 0%, var(--card) 100%);
-  border:1px solid var(--accent);
-  border-radius:16px;
-  padding:16px 18px;
-  box-shadow:0 12px 40px rgba(34,197,94,.25);
+  right:24px;
+  top: calc(var(--pt-top, 200px) + 10px);
+  left:auto;
+  bottom:auto;
+  transform:translateY(-10px);
+  opacity:0;
+  visibility:hidden;
+  width:min(340px, calc(100vw - 32px));
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-left:4px solid var(--accent);
+  border-radius:14px;
+  padding:0;
+  box-shadow:0 16px 48px rgba(0,0,0,.45);
   z-index:1500;
   font-family:var(--font);
-  transition:transform .35s cubic-bezier(.25,.85,.4,1.05);
+  transition: transform .35s cubic-bezier(.25,.85,.4,1.05),
+              opacity .3s ease,
+              visibility 0s linear .3s;
+  pointer-events:none;
+  overflow:hidden;
 }
-#proactiveToast.show{ transform: translateX(-50%) translateY(0); }
-#proactiveToast .pt-head{
+#proactiveToast.show{
+  transform: translateY(0);
+  opacity:1;
+  visibility:visible;
+  pointer-events:auto;
+  transition: transform .35s cubic-bezier(.25,.85,.4,1.05),
+              opacity .3s ease,
+              visibility 0s linear 0s;
+}
+#proactiveToast.priority-info{ border-left-color:var(--accent); }
+#proactiveToast.priority-warn{ border-left-color:#F59E0B; }
+#proactiveToast.priority-urgent{
+  border-left-color:#EF4444;
+  animation: ptUrgentPulse 1.4s ease-in-out infinite;
+}
+@keyframes ptUrgentPulse{
+  0%,100%{ box-shadow:0 16px 48px rgba(0,0,0,.45), 0 0 0 0 rgba(239,68,68,.0); }
+  50%{ box-shadow:0 16px 48px rgba(0,0,0,.45), 0 0 0 6px rgba(239,68,68,.18); }
+}
+#proactiveToast .pt-stripe-head{
+  display:flex; justify-content:space-between; align-items:center;
+  padding:11px 16px 9px;
+  border-bottom:1px solid var(--border);
+  background:var(--card);
+}
+#proactiveToast .pt-stripe-title{
   display:flex; align-items:center; gap:8px;
   font-size:11px; font-weight:700;
-  color:var(--accent); letter-spacing:0.08em; text-transform:uppercase;
-  margin-bottom:8px;
+  color:var(--accent); letter-spacing:.07em; text-transform:uppercase;
 }
-#proactiveToast .pt-head .dot{
+#proactiveToast.priority-warn .pt-stripe-title{ color:#F59E0B; }
+#proactiveToast.priority-urgent .pt-stripe-title{ color:#EF4444; }
+#proactiveToast .pt-stripe-title .dot{
   width:8px; height:8px; border-radius:99px; background:var(--accent);
   box-shadow:0 0 0 4px rgba(34,197,94,.18);
   animation: ptPulse 1.5s ease-in-out infinite;
 }
-@keyframes ptPulse{
-  0%,100%{ box-shadow:0 0 0 4px rgba(34,197,94,.18); }
-  50%    { box-shadow:0 0 0 9px rgba(34,197,94,0);    }
-}
+#proactiveToast.priority-warn .pt-stripe-title .dot{ background:#F59E0B; }
+#proactiveToast.priority-urgent .pt-stripe-title .dot{ background:#EF4444; }
+#proactiveToast .pt-when{ font-size:11px; color:var(--text3); font-family:var(--mono); }
+#proactiveToast .pt-body{ padding:14px 16px 10px; }
 #proactiveToast .pt-msg{
-  color:var(--text); font-size:14px; line-height:1.45; margin-bottom:12px;
+  color:var(--text); font-size:13.5px; line-height:1.5; margin:0 0 12px;
 }
-#proactiveToast .pt-meta{
-  display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;
+#proactiveToast .pt-stats{
+  display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:10px;
 }
-#proactiveToast .pt-chip{
-  font-size:11px; padding:4px 9px; border-radius:99px;
-  background:var(--card2); color:var(--text2); font-weight:600;
-  font-family:var(--mono);
+#proactiveToast .pt-stat{
+  background:var(--card2); border-radius:9px; padding:9px 10px;
+  display:flex; flex-direction:column; gap:2px;
 }
-#proactiveToast .pt-chip.green{ background:var(--accent-bg); color:var(--accent); }
-#proactiveToast .pt-actions{ display:flex; gap:8px; }
+#proactiveToast .pt-stat-v{ color:var(--text); font-size:14px; font-weight:700; font-family:var(--mono); }
+#proactiveToast .pt-stat-v.green{ color:var(--accent); }
+#proactiveToast .pt-stat-l{ color:var(--text3); font-size:10px; text-transform:uppercase; letter-spacing:.04em; }
+#proactiveToast .pt-meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
+#proactiveToast .pt-chip{font-size:10px;font-weight:700;border-radius:999px;padding:4px 7px;background:var(--card);color:var(--text2);border:1px solid var(--border);}
+#proactiveToast .pt-chip.green{background:var(--accent-bg);color:var(--accent);border-color:var(--accent-border);}
+#proactiveToast .pt-reasons{
+  font-size:11.5px; color:var(--text3); line-height:1.5;
+  padding:8px 10px; background:var(--card2); border-radius:8px;
+  margin-bottom:2px;
+}
+#proactiveToast .pt-reasons:empty{ display:none; }
+#proactiveToast .pt-actions{ display:flex; gap:8px; padding:10px 16px 14px; }
 #proactiveToast button{
-  flex:1; padding:9px 12px; border-radius:10px;
+  flex:1; padding:10px 12px; border-radius:10px;
   font-weight:700; font-size:13px; font-family:var(--font); cursor:pointer;
   border:1px solid var(--border);
+  transition:filter .15s;
 }
+#proactiveToast button:hover{ filter:brightness(1.1); }
 #proactiveToast .pt-accept{ background:var(--accent); color:#fff; border-color:var(--accent); }
 #proactiveToast .pt-dismiss{ background:transparent; color:var(--text2); }
+.place-chips{
+  display:flex; flex-direction:column; gap:6px;
+  margin-top:10px;
+}
+.place-chip{
+  display:flex; align-items:center; justify-content:space-between;
+  background:var(--card2); border:1px solid var(--border);
+  border-radius:10px; padding:10px 12px;
+  cursor:pointer; transition:var(--transition);
+  gap:10px;
+}
+.place-chip:hover{ background:var(--card); border-color:var(--border2); }
+.place-chip-info{
+  display:flex; flex-direction:column; gap:2px; min-width:0;
+}
+.place-chip-name{
+  font-size:13px; font-weight:600; color:var(--text);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.place-chip-meta{ font-size:11px; color:var(--text3); }
+.place-chip-go{
+  flex-shrink:0;
+  background:var(--accent); color:#000;
+  border:none; border-radius:8px;
+  padding:6px 10px; font-size:12px; font-weight:700;
+  cursor:pointer; white-space:nowrap;
+  transition:var(--transition);
+}
+.place-chip-go:hover{ background:var(--accent2); }
+@media (max-width:768px){
+  #proactiveToast{
+    left:16px; right:16px; width:auto;
+    top:auto; bottom:80px;
+    transform:translateY(20px);
+  }
+}
 
 /* ─── Schedule modal ───────────────────────────────────────────── */
 .modal-backdrop{
@@ -1307,32 +1390,105 @@ body.side-panel-open #searchWrap {
   }
 }
 
+/* While we don't yet know the account type, hide every account-gated element
+   so we never flash the wrong UI. Replaced once ecoApplyAccountType runs. */
+body.acct-unknown #leftPanel,
+body.acct-unknown #searchWrap,
+body.acct-unknown #todayCard,
+body.acct-unknown #proactiveToast,
+body.acct-unknown #panelLB,
+body.acct-unknown #panelImpact,
+body.acct-unknown #panelCarpool,
+body.acct-unknown #railLB,
+body.acct-unknown #railImpact,
+body.acct-unknown #railCarpool,
+body.acct-unknown #railBilling,
+body.acct-unknown #plannerPanel,
+body.acct-unknown #trialBanner {
+  visibility: hidden !important;
+}
+
+/* Keep the legacy class-based gate too, in case any future markup uses it */
+body.acct-unknown .citizen-only,
+body.acct-unknown .business-only {
+  visibility: hidden !important;
+}
+
 /* When planner mode is active, dim citizen-only UI for clarity */
 body.planner-mode #leftPanel,
 body.planner-mode #searchWrap{ display:none !important; }
 body.planner-mode #plannerPanel{ display:flex !important; }
 
 /* Planner side-panel layout */
-#plannerPanel{
-  display:none;
-  position:fixed; top:90px; left:88px;
-  width:380px; max-width:calc(100vw - 100px);
-  max-height:calc(100vh - 110px);
-  background:var(--surface); border:1px solid var(--border);
-  border-radius:14px; box-shadow:var(--shadow);
-  flex-direction:column;
-  font-family:var(--font); color:var(--text); z-index:850;
+.planner-views { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+.pv-card {
+  display: flex; gap: 10px; padding: 10px 12px;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 12px; cursor: pointer; transition: 0.15s;
 }
+.pv-card:hover { background: var(--card2); border-color: var(--accent-border); }
+.pv-card.active { background: var(--accent-bg); border-color: var(--accent); }
+.pv-icon {
+  flex-shrink: 0; width: 32px; height: 32px; display: flex;
+  align-items: center; justify-content: center;
+  background: var(--card2); color: var(--text2); border-radius: 8px;
+}
+.pv-card.active .pv-icon { background: var(--accent); color: #000; }
+.pv-title { font-size: 13px; font-weight: 700; color: var(--text); }
+.pv-desc  { font-size: 11px; color: var(--text3); margin-top: 2px; line-height: 1.3; }
+#plannerPanel {
+  display:none;
+  position:fixed;
+  top:12px; bottom:12px;
+  left:calc(var(--rail-w) + 12px);
+  width:var(--panel-w); max-width:calc(100vw - var(--rail-w) - 24px);
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:16px; box-shadow:var(--shadow-lg);
+  flex-direction:column; overflow:hidden;
+  font-family:var(--font); color:var(--text); z-index:2000;
+  transform:translateX(-120%); opacity:0;
+  transition:transform .3s cubic-bezier(.2,.8,.3,1), opacity .3s;
+}
+#plannerPanel.open{ transform:translateX(0); opacity:1; }
 /* Push planner panel down when the trial banner is visible (business only) */
 body.acct-business.has-trial-banner #plannerPanel{
-  top:170px;
-  max-height:calc(100vh - 190px);
+  top:72px;
 }
 #plannerPanel .pp-head{
   padding:14px 16px; border-bottom:1px solid var(--border);
   display:flex; align-items:center; justify-content:space-between;
 }
 #plannerPanel .pp-head h3{ font-size:15px; }
+#favouritesPanel {
+  position: fixed;
+  top: 12px; bottom: 12px;
+  left: calc(var(--rail-w) + 12px);
+  width: var(--panel-w); max-width: calc(100vw - var(--rail-w) - 24px);
+  z-index: 2000;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 16px; box-shadow: var(--shadow-lg);
+  display: none; flex-direction: column; overflow: hidden;
+  transform: translateX(-120%); opacity: 0;
+  transition: transform .3s cubic-bezier(.2,.8,.3,1), opacity .3s;
+}
+#favouritesPanel.visible{ display:flex; }
+#favouritesPanel.open{ transform:translateX(0); opacity:1; }
+#favouritesPanel .pp-head { padding: 14px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+#favouritesPanel .pp-head h3 { margin: 0; font-size: 16px; font-weight: 800; color: var(--text); }
+#favouritesPanel .pp-body { flex: 1; overflow-y: auto; padding: 14px 16px; scrollbar-width: thin; scrollbar-color: var(--card) transparent; }
+#favouritesPanel .pp-body::-webkit-scrollbar { width: 6px; }
+#favouritesPanel .pp-body::-webkit-scrollbar-track { background: transparent; }
+#favouritesPanel .pp-body::-webkit-scrollbar-thumb { background: var(--card); border-radius: 3px; }
+.eco-fav-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin-bottom: 10px; transition: border-color 0.15s, transform 0.15s; }
+.eco-fav-card:hover { border-color: var(--accent); }
+.eco-fav-name { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 4px; display:flex; align-items:center; gap:6px; }
+.eco-fav-meta { font-size: 11px; color: var(--text3); margin-bottom: 10px; }
+.eco-fav-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.eco-fav-btn { flex: 1; min-width: 80px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 11.5px; font-weight: 600; cursor: pointer; transition: background 0.15s, border-color 0.15s; }
+.eco-fav-btn:hover { background: var(--card2); border-color: var(--accent); }
+.eco-fav-btn.danger { color: var(--red); }
+.eco-fav-btn.primary { background: var(--accent); color: #000; border-color: var(--accent); font-weight: 700; }
+
 #plannerPanel .pp-head .pp-tag{
   font-size:10px; font-family:var(--mono);
   padding:3px 8px; border-radius:99px;
@@ -1341,6 +1497,25 @@ body.acct-business.has-trial-banner #plannerPanel{
 }
 #plannerPanel .pp-body{
   flex:1; overflow-y:auto; padding:14px 16px;
+}
+/* Custom scrollbar - blends with the panel surface */
+#plannerPanel .pp-body {
+  scrollbar-width: thin;
+  scrollbar-color: var(--card) transparent;
+}
+#plannerPanel .pp-body::-webkit-scrollbar {
+  width: 6px;
+}
+#plannerPanel .pp-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+#plannerPanel .pp-body::-webkit-scrollbar-thumb {
+  background: var(--card);
+  border-radius: 3px;
+  transition: background 0.2s;
+}
+#plannerPanel .pp-body::-webkit-scrollbar-thumb:hover {
+  background: var(--border);
 }
 #plannerPanel .pp-form label{
   display:block; font-size:11px; font-weight:700;
@@ -1626,6 +1801,10 @@ body.acct-business #plannerPanel{
 body.acct-business #railBilling{
   display:flex !important;
 }
+body.acct-unknown #railFavourites,
+body.acct-unknown #favouritesPanel{
+  display:none !important;
+}
 /* Business gets a small badge */
 body.acct-business .rail-avatar{ position:relative; }
 body.acct-business .rail-avatar::after{
@@ -1854,6 +2033,13 @@ body.acct-business #trialBanner.show{ display:block; }
 }
 .parked-panel .pp-primary:hover{ filter:brightness(1.08); }
 .parked-panel .pp-primary svg{ width:18px; height:18px; }
+.parked-panel .pp-secondary{
+  flex:1; height:48px; border-radius:24px;
+  background:var(--card); color:var(--text2); border:1px solid var(--border);
+  font-family:var(--font); font-weight:700; font-size:14px;
+  cursor:pointer;
+}
+.parked-panel .pp-secondary:hover{ color:var(--text); border-color:var(--border2); }
 .parked-panel .pp-end{
   width:48px; height:48px; border-radius:24px;
   background:var(--card); color:var(--red); border:1px solid var(--border);
@@ -1862,12 +2048,52 @@ body.acct-business #trialBanner.show{ display:block; }
 }
 .parked-panel .pp-end:hover{ background:var(--red); color:#fff; border-color:var(--red); }
 .parked-panel .pp-end svg{ width:18px; height:18px; }
+/* In-trip suggestion banner (above nav-bottom, non-blocking) */
+.ahead-banner{
+  position:absolute;
+  left:50%; transform:translateX(-50%) translateY(20px);
+  bottom:calc(100% + 12px);
+  width:min(440px, calc(100vw - 24px));
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-left:4px solid #F59E0B;
+  border-radius:14px;
+  padding:14px 16px 12px;
+  box-shadow:0 12px 36px rgba(0,0,0,.45);
+  z-index:2010;
+  font-family:var(--font);
+  opacity:0;
+  pointer-events:none;
+  transition:transform .3s cubic-bezier(.25,.85,.4,1.05), opacity .25s;
+}
+.ahead-banner.show{ transform:translateX(-50%) translateY(0); opacity:1; pointer-events:auto; }
+.ahead-banner .ab-head{ display:flex; align-items:flex-start; gap:10px; margin-bottom:10px; }
+.ahead-banner .ab-icon{ width:32px; height:32px; border-radius:50%; background:rgba(245,158,11,.14); color:#F59E0B; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.ahead-banner .ab-icon svg{ width:18px; height:18px; }
+.ahead-banner .ab-text{ flex:1; min-width:0; }
+.ahead-banner .ab-title{ font-size:13px; font-weight:700; color:var(--text); }
+.ahead-banner .ab-sub{ font-size:11.5px; color:var(--text3); margin-top:2px; line-height:1.45; }
+.ahead-banner .ab-dismiss{ width:26px; height:26px; border-radius:50%; background:transparent; border:0; color:var(--text3); cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.ahead-banner .ab-dismiss:hover{ background:var(--card2); color:var(--text); }
+.ahead-banner .ab-dismiss svg{ width:14px; height:14px; }
+.ahead-banner .ab-meta{ display:flex; gap:12px; padding:7px 10px; background:var(--card2); border-radius:8px; font-size:11px; color:var(--text2); margin-bottom:10px; }
+.ahead-banner .ab-meta b{ color:var(--text); font-weight:700; font-family:var(--mono); }
+.ahead-banner .ab-actions{ display:flex; gap:8px; }
+.ahead-banner .ab-primary{ flex:1; padding:9px 12px; border-radius:9px; background:var(--accent); color:#fff; border:0; font-family:var(--font); font-weight:700; font-size:12.5px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; }
+.ahead-banner .ab-primary:hover{ filter:brightness(1.08); }
+.ahead-banner .ab-primary svg{ width:14px; height:14px; }
+.ahead-banner .ab-secondary{ padding:9px 14px; border-radius:9px; background:transparent; color:var(--text2); border:1px solid var(--border); font-family:var(--font); font-weight:600; font-size:12.5px; cursor:pointer; }
+.ahead-banner .ab-secondary:hover{ background:var(--card); color:var(--text); border-color:var(--border2); }
+.ahead-banner .ab-live{ display:inline-flex; align-items:center; gap:3px; margin-left:6px; padding:1px 6px; border-radius:99px; background:rgba(34,197,94,.16); color:var(--accent); font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; vertical-align:middle; }
+.ahead-banner .ab-live::before{ content:''; width:5px; height:5px; border-radius:50%; background:var(--accent); box-shadow:0 0 0 2px rgba(34,197,94,.3); animation:abLivePulse 1.4s ease-in-out infinite; }
+@keyframes abLivePulse{ 0%,100%{ box-shadow:0 0 0 2px rgba(34,197,94,.3);} 50%{ box-shadow:0 0 0 5px rgba(34,197,94,0);} }
+@media (max-width: 768px){ .ahead-banner{ width:calc(100vw - 16px); bottom:calc(100% + 8px);} }
 
 /* ─── Demo toast (utility) ──────────────────────────────────────────── */
 .demo-toast{
   position:fixed; left:50%; bottom:24px; transform:translateX(-50%);
   background:var(--surface); border:1px solid var(--border);
-  border-radius:10px; padding:10px 16px;
+  border-radius:10px; padding:8px 14px;
   font-family:var(--font); color:var(--text); font-size:13px;
   box-shadow:var(--shadow);
   z-index:1600;
@@ -1996,7 +2222,14 @@ body.acct-business #trialBanner.show{ display:block; }
   </div>
   <button class="rail-item active" id="railMap" onclick="navTo('map')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
-    <span class="rail-tt">Routes</span>
+    <span class="rail-tt">Planner</span>
+  </button>
+  <button class="rail-item" id="railFavourites" onclick="navTo('favourites')">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="12 2 15 8 22 9 17 14 18 21 12 18 6 21 7 14 2 9 9 8"></polygon>
+    </svg>
+    <span class="rail-tt">Favourites</span>
   </button>
   <button class="rail-item" id="railImpact" onclick="navTo('impact')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c4-4 8-7.5 8-12a8 8 0 1 0-16 0c0 4.5 4 8 8 12z"/><path d="M12 2v6M8 6l4-4 4 4"/></svg>
@@ -2017,6 +2250,10 @@ body.acct-business #trialBanner.show{ display:block; }
   <button class="rail-item" id="railChat" onclick="navTo('chat')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
     <span class="rail-tt">AI Chat</span>
+  </button>
+  <button class="rail-item" id="railRecommend" onclick="navTo('recommend')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><path d="M11 8v6"/><path d="M8 11h6"/></svg>
+    <span class="rail-tt">AI Explore</span>
   </button>
   <button class="rail-item" id="railSettings" onclick="navTo('settings')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -2043,6 +2280,10 @@ body.acct-business #trialBanner.show{ display:block; }
   <button class="tab" data-tab="chat" onclick="navTo('chat')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
     <span>AI</span>
+  </button>
+  <button class="tab" data-tab="recommend" onclick="navTo('recommend')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><path d="M11 8v6"/><path d="M8 11h6"/></svg>
+    <span>Explore</span>
   </button>
   <button class="tab" data-tab="profile" onclick="navTo('profile')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
@@ -2078,15 +2319,19 @@ body.acct-business #trialBanner.show{ display:block; }
 </div>
 
 <!-- ═══ PROACTIVE AGENT TOAST (the "WOW" moment) ═══ -->
-<div id="proactiveToast">
-  <div class="pt-head">
-    <span class="dot"></span>
-    EcoFlow Proactive Agent
+<div id="proactiveToast" role="status" aria-live="polite">
+  <div class="pt-stripe-head">
+    <div class="pt-stripe-title"><span class="dot"></span><span>Proactive Agent</span></div>
+    <span class="pt-when" id="ptWhen">in 30 min</span>
   </div>
-  <div class="pt-msg" id="ptMsg">Heads up — checking your schedule…</div>
-  <div class="pt-meta" id="ptMeta"></div>
+  <div class="pt-body">
+    <div class="pt-msg" id="ptMsg">Heads up - checking your schedule...</div>
+    <div class="pt-stats" id="ptStats"></div>
+    <div class="pt-meta" id="ptMeta"></div>
+    <div class="pt-reasons" id="ptReasons"></div>
+  </div>
   <div class="pt-actions">
-    <button class="pt-dismiss" onclick="ecoDismissToast()">Dismiss</button>
+    <button class="pt-dismiss" onclick="ecoDismissToast()">Not now</button>
     <button class="pt-accept" id="ptAccept" onclick="ecoAcceptToast()">Use this plan</button>
   </div>
 </div>
@@ -2193,25 +2438,58 @@ body.acct-business #trialBanner.show{ display:block; }
 
 <div id="plannerPanel">
   <div class="pp-head">
-    <h3>City Planner Mode</h3>
-    <span class="pp-tag">B2B / B2G</span>
+    <h3>15-Min City Planner</h3>
+    <span class="pp-tag">B2B / City</span>
   </div>
   <div class="pp-body">
+    <div id="plannerMainView">
     <p style="font-size:12px;color:var(--text2);line-height:1.5;margin-bottom:12px">
-      Score any candidate location for opening a small business, evaluating
-      a residential development, or finding a "carbon-saving gap" in a
-      neighbourhood. <strong>Tap the map</strong> to set the analysis point,
-      then run.
+      <strong>Tap the map</strong> to set an analysis point, then select your perspective to generate a targeted carbon-reduction report.
     </p>
 
-    <div class="pp-form">
-      <label>Latitude</label>
-      <input type="text" id="ppLat" placeholder="e.g. 3.1390"/>
-      <label>Longitude</label>
-      <input type="text" id="ppLon" placeholder="e.g. 101.6869"/>
+    <div class="planner-views">
+      <div class="pv-card active" onclick="ecoSelectPlannerView('merchant')" id="pv-merchant">
+        <div class="pv-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
+        <div>
+          <div class="pv-title">Merchant Site Selection</div>
+          <div class="pv-desc">Find service gaps to capture local demand and reduce commute carbon.</div>
+        </div>
+      </div>
+      <div class="pv-card" onclick="ecoSelectPlannerView('resident')" id="pv-resident">
+        <div class="pv-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
+        <div>
+          <div class="pv-title">Residential Gap Analysis</div>
+          <div class="pv-desc">Identify missing amenities forcing residents into long-haul drives.</div>
+        </div>
+      </div>
+      <div class="pv-card" onclick="ecoSelectPlannerView('developer')" id="pv-developer">
+        <div class="pv-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/></svg></div>
+        <div>
+          <div class="pv-title">New Build Assessment</div>
+          <div class="pv-desc">Evaluate traffic burden and required commercial mix for new housing.</div>
+        </div>
+      </div>
+    </div>
 
-      <label>Business / amenity type</label>
-      <select id="ppType">
+    <input type="hidden" id="ppView" value="merchant" />
+
+    <label style="font-size:12px; font-weight:600; letter-spacing:0.5px; text-transform:none; color:var(--text2); margin:14px 0 8px; display:block;">Locations to Analyze</label>
+      
+      <div id="ppSearchContainer" style="margin-bottom: 12px; position:relative;">
+        <div style="display:flex; gap:8px; margin-bottom:8px;">
+          <div style="width:12px;height:12px;border-radius:50%;background:var(--purple);margin-top:12px;flex-shrink:0;box-shadow:0 0 8px var(--purple)"></div>
+          <input type="text" id="ppSearch_0" placeholder="Search Start point..." style="flex:1; padding:9px 11px; background:var(--card); border:1px solid var(--border); border-radius:8px; color:var(--text); font-size:13px;" oninput="ecoPlannerSearchInput(this.value, 0)"/>
+          <button type="button" onclick="ecoSearchPlannerLoc(0)" style="padding:0 12px; border-radius:8px; background:var(--accent); border:none; color:#000; font-weight:bold; cursor:pointer;">Search</button>
+        </div>
+        <div id="ppSearchDropdown" style="display:none; position:absolute; top:100%; z-index:2100; background:var(--surface); border:1px solid var(--border); border-radius:12px; max-height:240px; overflow-y:auto; box-shadow:var(--shadow-lg); width:100%;"></div>
+      </div>
+      
+      <input type="hidden" id="ppLat" />
+      <input type="hidden" id="ppLon" />
+
+
+<label id="ppTypeLabel" style="font-size:12px; font-weight:600; letter-spacing:0.5px; text-transform:none; color:var(--text2); margin:14px 0 8px; display:block;">Business / amenity type</label>
+      <select id="ppType" style="width:100%; padding:9px 11px; background:var(--card); border:1px solid var(--border); border-radius:8px; color:var(--text); font-size:13px;">
         <option value="cafe">Cafe / Coffee shop</option>
         <option value="mamak">Mamak / Restaurant</option>
         <option value="grocery">Grocery / Supermarket</option>
@@ -2220,24 +2498,47 @@ body.acct-business #trialBanner.show{ display:block; }
         <option value="other">Other</option>
       </select>
 
-      <label>View</label>
-      <select id="ppView">
-        <option value="merchant">Merchant — should I open here?</option>
-        <option value="resident">Resident / Council — what's this neighbourhood missing?</option>
-        <option value="developer">Developer — does this site reduce car dependence?</option>
-      </select>
+      <!-- 增加了 margin-top: 16px 来拉开间距 -->
+      <label style="font-size:12px; font-weight:600; letter-spacing:0.5px; text-transform:none; color:var(--text2); margin:14px 0 8px; display:block;">Analysis Radius (km)</label>
+      <!-- 改成了 type="number" 的输入框 -->
+      <input type="number" min="0.1" max="20.0" step="0.1" value="1.0" id="ppRadiusSlider" style="width:100%; padding:9px 11px; background:var(--card); border:1px solid var(--border); border-radius:8px; color:var(--text); font-size:13px; outline:none; margin-top:4px; transition: border-color 0.2s;" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
 
-      <label>Radius (km)</label>
-      <input type="text" id="ppRadius" value="1.0"/>
-
-      <button class="pp-run" onclick="ecoRunSiteAnalysis()">Analyse site</button>
+     <button class="pp-run" onclick="ecoRunSiteAnalysis()" style="border-radius:10px; font-weight:700; letter-spacing:0.3px; padding:13px 14px; font-size:13px;">Generate AI Report</button>
     </div>
 
-    <div id="ppResultWrap" class="pp-result" style="display:none"></div>
+      <!-- 核心修复：把结果容器和隐私声明统统放进滚动区域 (.pp-body) 的内部！ -->
+      <div id="plannerReportView" style="display:none;">
+    <button type="button" id="reportBackBtn" onclick="ecoBackToPlannerForm()" style="background:transparent; border:none; color:var(--text2); font-size:13px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:6px; padding:6px 0; margin-bottom:10px;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg><span>Back to Planner</span>
+    </button>
+    <div id="ppResultWrap"></div>
+    <div id="ppAcceptBar" style="display:none; margin-top:16px; padding-top:14px; border-top:1px solid var(--border);"></div>
+  </div>
 
-    <div class="pp-privacy">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-      Privacy: aggregated &amp; k≥5 anonymised. PDPA 2010 / 2024 aligned.
+      <div class="pp-privacy">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        Privacy: aggregated &amp; k≥5 anonymised. PDPA 2010 / 2024 aligned.
+      </div>
+
+    </div> <!-- 这里才是 .pp-body 滚动区域真正的结束位置 -->
+  </div> <!-- 这里是 plannerPanel 整体的结束位置 -->
+<!-- FAVOURITES PANEL -->
+<div id="favouritesPanel">
+  <div class="pp-head">
+    <h3>Favourites</h3>
+    <button type="button" onclick="navTo('map')" aria-label="Close favourites" style="background:transparent;border:none;color:var(--text2);font-size:18px;line-height:1;cursor:pointer;padding:4px 6px;">&times;</button>
+  </div>
+  <div class="pp-body">
+    <div id="favListView">
+      <div id="favEmptyState" class="empty-state" style="display:none; padding:28px 12px; text-align:center;">
+        <div class="es-title">No favourites yet</div>
+        <div class="es-sub">Save a place or accept a planner site to keep its AI report here.</div>
+      </div>
+      <div id="favListContainer"></div>
+    </div>
+    <div id="favDetailView" style="display:none;">
+      <button type="button" onclick="ecoFavBackToList()" style="background:transparent;border:none;color:var(--text2);font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;padding:4px 0 12px;">Back to favourites</button>
+      <div id="favDetailBody"></div>
     </div>
   </div>
 </div>
@@ -2492,6 +2793,35 @@ body.acct-business #trialBanner.show{ display:block; }
 </div>
 
 <!-- ═══ NAVIGATION VIEW ═══ -->
+<!-- AI SMART EXPLORE / RECOMMEND PANEL -->
+<div class="side-panel" id="panelRecommend">
+  <div class="ph-hd">
+    <div style="flex:1">
+      <div class="ph-title">AI Smart Explore</div>
+      <div class="ph-sub">Find places &amp; save carbon</div>
+    </div>
+    <button class="ph-close" onclick="closeSidePanel()">&times;</button>
+  </div>
+  <div class="panel-scroll pb" style="padding:16px">
+    <div style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.5">Tell AI what you're craving or looking for. We'll find the best match and calculate a lower-carbon route.</div>
+    <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:8px">Try asking:</div>
+    <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:18px;">
+      <span style="padding:6px 10px; font-size:12px; background:var(--card); border:1px solid var(--border); border-radius:8px; cursor:pointer; color:var(--text); transition:var(--transition)" onclick="document.getElementById('aiRecInput').value='Quiet cafe for studying'; ecoRunAIRecommend()" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">Quiet cafe for studying</span>
+      <span style="padding:6px 10px; font-size:12px; background:var(--card); border:1px solid var(--border); border-radius:8px; cursor:pointer; color:var(--text); transition:var(--transition)" onclick="document.getElementById('aiRecInput').value='Authentic Nasi Lemak nearby'; ecoRunAIRecommend()" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">Authentic Nasi Lemak nearby</span>
+      <span style="padding:6px 10px; font-size:12px; background:var(--card); border:1px solid var(--border); border-radius:8px; cursor:pointer; color:var(--text); transition:var(--transition)" onclick="document.getElementById('aiRecInput').value='24 hour clinic'; ecoRunAIRecommend()" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">24 hour clinic</span>
+    </div>
+    <label style="display:block;font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;margin-bottom:6px">Your Request</label>
+    <input type="text" id="aiRecInput" style="width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:10px;background:var(--card);color:var(--text);font-family:var(--font);font-size:13px;outline:none;margin-bottom:12px" placeholder="Type anything..." onkeypress="if(event.key==='Enter') ecoRunAIRecommend()"/>
+    <input type="hidden" id="ppAiQuery" />
+    <button class="btn-nav" id="aiRecBtn" onclick="ecoRunAIRecommend()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Search</button>
+    <div id="aiRecLoader" class="loading-state" style="display:none; padding:40px 10px"><div class="loading-spinner"></div><div class="loading-txt">AI is analyzing locations...</div></div>
+    <div id="aiRecResult" style="margin-top:20px; display:none"><div id="ppAiResult"></div></div>
+  </div>
+</div>
+
+<!-- Compatibility placeholders for helpers that create/move these nodes at runtime -->
+<div id="ecoDemoToast" class="demo-toast" style="display:none"></div>
+<div id="wxTip" style="display:none"></div>
 <div id="navView">
   <div class="nav-top">
     <div class="nav-dir-icon" id="navDirIcon">
@@ -2519,6 +2849,7 @@ body.acct-business #trialBanner.show{ display:block; }
       </button>
     </div>
   </div>
+  <div class="ahead-banner" id="aheadBanner" aria-live="polite" hidden></div>
 </div>
 
 <!-- ═══ TOAST ═══ -->
@@ -2579,6 +2910,7 @@ function updateAvatarUI(){
 }
 
 let waypointCount = 0;
+let _planGen = 0;
 
 function addWaypointUI() {
   if (waypointCount >= 3) { showToast("Max 3 mid-stops"); return; }
@@ -2626,6 +2958,56 @@ function removeWaypoint(id, event) {
   if (C.s && C.e && J.mode) getRoute();
 }
 
+/** Remove ALL intermediate stops at once: rows, map pins, draft refs and C[wp*]. */
+function clearAllWaypoints() {
+  const wpContainer = document.getElementById('waypointsContainer');
+  if (wpContainer) wpContainer.innerHTML = '';
+  waypointCount = 0;
+
+  for (const k of Object.keys(draftMarkers || {})) {
+    if (/^wp\d+$/.test(k) && draftMarkers[k]) {
+      try { map.removeLayer(draftMarkers[k]); } catch(e) {}
+      delete draftMarkers[k];
+    }
+  }
+  for (const k of Object.keys(C || {})) {
+    if (/^wp\d+$/.test(k)) delete C[k];
+  }
+  const addBtn = document.getElementById('addStopBtn');
+  if (addBtn) addBtn.disabled = false;
+  updateLeftPanelOffset();
+}
+
+function nukeAllPlanState() {
+  const iS = document.getElementById('iStart');
+  const iE = document.getElementById('iEnd');
+  if (iS) iS.value = '';
+  if (iE) iE.value = '';
+  document.getElementById('clrS')?.classList.remove('vis');
+  document.getElementById('clrE')?.classList.remove('vis');
+  if (typeof C === 'object' && C) {
+    C.s = null;
+    C.e = null;
+    for (const k of Object.keys(C)) if (/^wp\d+$/.test(k)) delete C[k];
+  }
+  if (typeof draftMarkers === 'object' && draftMarkers) {
+    for (const k of Object.keys(draftMarkers)) {
+      if (draftMarkers[k]) { try { map.removeLayer(draftMarkers[k]); } catch(e) {} }
+      draftMarkers[k] = null;
+    }
+    draftMarkers.s = null;
+    draftMarkers.e = null;
+  }
+  const wpContainer = document.getElementById('waypointsContainer');
+  if (wpContainer) wpContainer.innerHTML = '';
+  document.querySelectorAll('[id^="row_wp"]').forEach(row => { try { row.remove(); } catch(e) {} });
+  waypointCount = 0;
+  const addBtn = document.getElementById('addStopBtn');
+  if (addBtn) addBtn.disabled = false;
+  try { updateLeftPanelOffset(); } catch(e) {}
+  _planGen++;
+}
+
 // Measure the search card and push the routes panel below it. This keeps
 // them from overlapping when the user adds intermediate stops and the card
 // grows. Called whenever waypoints are added/removed or panel resizes.
@@ -2649,15 +3031,246 @@ window.addEventListener('load', () => setTimeout(updateLeftPanelOffset, 100));
    Keyed in localStorage by approximate lat/lon (±~50m) to survive re-geocodes.
    Using the 'ecoflow_favs' key preserves any favourites the user already saved.
 */
+function ecoFavoritesEnabled() {
+  return typeof ecoAccountType !== 'undefined' && (ecoAccountType === 'personal' || ecoAccountType === 'business');
+}
+function ecoBusinessReportsEnabled() {
+  return typeof ecoAccountType !== 'undefined' && ecoAccountType === 'business';
+}
+function ecoFavoritesStorageKey() {
+  const uid = USER && USER.id ? String(USER.id) : 'anon';
+  return `ecoflow_favs:${uid}`;
+}
 function getFavorites() {
-  try { return JSON.parse(localStorage.getItem('ecoflow_favs') || '[]'); } catch(e) { return []; }
+  try { return JSON.parse(localStorage.getItem(ecoFavoritesStorageKey()) || '[]'); } catch(e) { return []; }
 }
 function saveFavorites(list) {
-  localStorage.setItem('ecoflow_favs', JSON.stringify(list));
+  localStorage.setItem(ecoFavoritesStorageKey(), JSON.stringify(list));
+}
+// Migrate a legacy favourite entry (no id, no customName) into the new schema.
+function _ecoMigrateFav(f) {
+  if (!f) return null;
+  if (f.id && f.customName != null) return f;   // already migrated
+  return {
+    id:         f.id        || ('fav-' + Date.now() + '-' + Math.floor(Math.random() * 1e6)),
+    customName: f.customName != null ? f.customName : (f.name || 'Untitled place'),
+    name:       f.name      || 'Untitled place',
+    addr:       f.addr      || '',
+    lat:        f.lat,
+    lon:        f.lon,
+    aiReport:   f.aiReport  || null,
+    createdAt:  f.createdAt || Date.now(),
+  };
+}
+
+// Returns favourites with new-schema fields guaranteed.
+function getFavoritesV2() {
+  return getFavorites().map(_ecoMigrateFav).filter(Boolean);
+}
+
+// Save a new favourite. If a coord-match exists, MERGE (overwrite aiReport if
+// the new one is non-null, otherwise keep the old one; preserve customName).
+function ecoUpsertFavourite(entry) {
+  const list = getFavoritesV2();
+  const idx  = list.findIndex(f =>
+    Math.abs(f.lat - entry.lat) < 0.0005 && Math.abs(f.lon - entry.lon) < 0.0005);
+  if (idx >= 0) {
+    const merged = {
+      ...list[idx],
+      ...entry,
+      customName: list[idx].customName || entry.customName,
+      aiReport:   entry.aiReport || list[idx].aiReport,
+      id:         list[idx].id,
+    };
+    list[idx] = merged;
+  } else {
+    list.unshift(_ecoMigrateFav(entry));
+  }
+  saveFavorites(list.slice(0, 60));
+  return list[0];
+}
+
+function ecoRenameFavourite(id, newName) {
+  const list = getFavoritesV2();
+  const f = list.find(x => x.id === id);
+  if (!f) return;
+  f.customName = String(newName || '').trim() || f.name || 'Untitled place';
+  saveFavorites(list);
+}
+
+function ecoDeleteFavourite(id) {
+  const list = getFavoritesV2().filter(x => x.id !== id);
+  saveFavorites(list);
+}
+
+/* Round 5 runtime helpers - favourites panel + planner accept flow */
+function ecoShowPlannerReportView() {
+  const main = document.getElementById('plannerMainView');
+  const report = document.getElementById('plannerReportView');
+  const body = document.querySelector('#plannerPanel .pp-body');
+  if (main) main.style.display = 'none';
+  if (report) report.style.display = 'block';
+  if (body) body.scrollTop = 0;
+}
+
+function ecoBackToPlannerForm() {
+  const main = document.getElementById('plannerMainView');
+  const report = document.getElementById('plannerReportView');
+  const bar = document.getElementById('ppAcceptBar');
+  if (report) report.style.display = 'none';
+  if (main) main.style.display = 'block';
+  if (bar) bar.style.display = 'none';
+}
+
+function ecoPlannerResultCoords(result) {
+  if (!result) return null;
+  const loc = result.location || result;
+  const lat = Number(loc.lat);
+  const lon = Number(loc.lon ?? loc.lng);
+  return Number.isFinite(lat) && Number.isFinite(lon) ? { lat, lon } : null;
+}
+
+function ecoRenderAcceptBar() {
+  const bar = document.getElementById('ppAcceptBar');
+  if (!bar) return;
+  if (!ecoBusinessReportsEnabled()) { bar.style.display = 'none'; bar.innerHTML = ''; return; }
+  const idx = Number.isInteger(window._selectedPlannerCardIdx) ? window._selectedPlannerCardIdx : 0;
+  const result = (window._lastComparisonResults || [])[idx];
+  const coords = ecoPlannerResultCoords(result);
+  if (!result || !coords) { bar.style.display = 'none'; bar.innerHTML = ''; return; }
+  const label = idx === 0 ? 'START point' : `OTHER point ${idx}`;
+  bar.style.display = 'block';
+  bar.innerHTML = `<button type="button" onclick="ecoAcceptSelectedCard()" style="width:100%; padding:14px; background:var(--accent); color:#000; font-weight:800; font-size:14px; border:none; border-radius:12px; cursor:pointer; letter-spacing:0.4px; display:flex; align-items:center; justify-content:center; gap:10px; box-shadow:0 6px 18px rgba(0, 200, 120, 0.35);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg><span>Accept ${label} &amp; Save</span></button><div style="text-align:center; margin-top:8px; font-size:10.5px; color:var(--text3);">Saves to Favourites with the full AI report, then opens navigation.</div>`;
+}
+
+function ecoSelectPlannerCard(idx) {
+  window._selectedPlannerCardIdx = idx;
+  document.querySelectorAll('.eco-pp-card').forEach((el, i) => {
+    const selected = i === idx;
+    el.classList.toggle('selected', selected);
+    el.style.borderColor = selected ? 'var(--accent)' : 'var(--border)';
+    el.style.transform = selected ? 'scale(1.01)' : '';
+    el.style.boxShadow = selected ? '0 0 0 3px rgba(0, 200, 120, 0.18)' : '';
+    const radio = el.querySelector('.eco-pp-radio');
+    if (radio) {
+      radio.style.borderColor = selected ? 'var(--accent)' : 'var(--border)';
+      radio.style.background = selected ? 'var(--accent)' : 'transparent';
+      radio.innerHTML = selected ? '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>' : '';
+    }
+  });
+  ecoRenderAcceptBar();
+}
+
+function ecoAcceptSelectedCard() {
+  const idx = Number.isInteger(window._selectedPlannerCardIdx) ? window._selectedPlannerCardIdx : 0;
+  const result = (window._lastComparisonResults || [])[idx];
+  const coords = ecoPlannerResultCoords(result);
+  if (!result || !coords) { if (typeof showToast === 'function') showToast('No site selected.'); return; }
+  if (!ecoBusinessReportsEnabled()) {
+    if (typeof showToast === 'function') showToast('Favourites are for business planner sites.');
+    if (typeof ecoAcceptPlannerSite === 'function') ecoAcceptPlannerSite(coords.lat, coords.lon);
+    return;
+  }
+  const pointLabel = idx === 0 ? 'Start point' : `Other point ${idx}`;
+  const defaultName = result.name || result.address || `${result.business_type || 'Site'} - ${pointLabel}`;
+  ecoUpsertFavourite({
+    name: defaultName,
+    customName: defaultName,
+    addr: result.address || '',
+    lat: coords.lat,
+    lon: coords.lon,
+    aiReport: { ...result, generatedAt: result.generatedAt || Date.now() },
+    createdAt: Date.now(),
+  });
+  if (typeof showToast === 'function') showToast('Saved to Favourites with AI report.');
+  if (typeof ecoAcceptPlannerSite === 'function') ecoAcceptPlannerSite(coords.lat, coords.lon);
+}
+
+function ecoRenderFavouritesList() {
+  const list = getFavoritesV2().slice().sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  const container = document.getElementById('favListContainer');
+  const empty = document.getElementById('favEmptyState');
+  const listView = document.getElementById('favListView');
+  const detailView = document.getElementById('favDetailView');
+  if (!container) return;
+  if (listView) listView.style.display = 'block';
+  if (detailView) detailView.style.display = 'none';
+  if (list.length === 0) {
+    container.innerHTML = '';
+    if (empty) empty.style.display = 'block';
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+  container.innerHTML = list.map(f => {
+    const hasReport = !!f.aiReport && ecoBusinessReportsEnabled();
+    const safeName = escHtml(f.customName || f.name || 'Untitled place');
+    const lon = f.lon ?? f.lng;
+    const meta = `${escHtml(f.addr || '')} ${Number.isFinite(Number(f.lat)) && Number.isFinite(Number(lon)) ? `(${Number(f.lat).toFixed(4)}, ${Number(lon).toFixed(4)})` : ''}`.trim();
+    return `<div class="eco-fav-card" data-fav-id="${f.id}"><div class="eco-fav-name"><svg width="14" height="14" viewBox="0 0 24 24" fill="${hasReport ? 'var(--accent)' : 'none'}" stroke="${hasReport ? 'var(--accent)' : 'var(--orange)'}" stroke-width="2"><polygon points="12 2 15 8 22 9 17 14 18 21 12 18 6 21 7 14 2 9 9 8"></polygon></svg><span>${safeName}</span></div><div class="eco-fav-meta">${meta}</div><div class="eco-fav-actions">${hasReport ? `<button type="button" class="eco-fav-btn primary" onclick="ecoViewFavReport('${f.id}')">View Report</button>` : ''}<button type="button" class="eco-fav-btn" onclick="ecoLocateFavourite('${f.id}')">Locate</button><button type="button" class="eco-fav-btn" onclick="ecoPromptRenameFavourite('${f.id}')">Rename</button><button type="button" class="eco-fav-btn danger" onclick="ecoConfirmDeleteFavourite('${f.id}')">Delete</button></div></div>`;
+  }).join('');
+}
+
+function ecoLocateFavourite(id) {
+  const f = getFavoritesV2().find(x => x.id === id);
+  if (!f) return;
+  const lon = f.lon ?? f.lng;
+  if (typeof map !== 'undefined' && map.flyTo) map.flyTo([f.lat, lon], 15, { animate: true, duration: 0.6 });
+  try { drawDraftMarker('e', { lat: f.lat, lon, name: f.customName || f.name }); } catch (_) {}
+  if (typeof navTo === 'function') navTo('map');
+  if (typeof showToast === 'function') showToast(`Located: ${f.customName || f.name}`);
+}
+
+function ecoPromptRenameFavourite(id) {
+  const f = getFavoritesV2().find(x => x.id === id);
+  if (!f) return;
+  const next = window.prompt('Rename favourite', f.customName || f.name || '');
+  if (next == null) return;
+  ecoRenameFavourite(id, next);
+  ecoRenderFavouritesList();
+}
+
+function ecoConfirmDeleteFavourite(id) {
+  const f = getFavoritesV2().find(x => x.id === id);
+  if (!f) return;
+  if (!window.confirm(`Delete favourite "${f.customName || f.name}"? This also removes its saved AI report.`)) return;
+  ecoDeleteFavourite(id);
+  ecoRenderFavouritesList();
+}
+
+function ecoFavBackToList() {
+  const listView = document.getElementById('favListView');
+  const detailView = document.getElementById('favDetailView');
+  if (listView) listView.style.display = 'block';
+  if (detailView) detailView.style.display = 'none';
+}
+
+function ecoViewFavReport(id) {
+  const f = getFavoritesV2().find(x => x.id === id);
+  if (!f || !f.aiReport) return;
+  const listView = document.getElementById('favListView');
+  const detailView = document.getElementById('favDetailView');
+  const body = document.getElementById('favDetailBody');
+  if (listView) listView.style.display = 'none';
+  if (detailView) detailView.style.display = 'block';
+  if (!body) return;
+  const r = f.aiReport;
+  body.innerHTML = `<div style="font-size:13px; font-weight:800; color:var(--text); margin-bottom:6px;">${escHtml(f.customName || f.name)}</div><div style="font-size:11px; color:var(--text3); margin-bottom:14px;">Saved ${new Date(r.generatedAt || f.createdAt).toLocaleString()}</div><div id="favSavedReportRender"></div>`;
+  const originalWrap = document.getElementById('ppResultWrap');
+  const renderTarget = document.getElementById('favSavedReportRender');
+  const tempWrap = document.createElement('div');
+  tempWrap.id = 'ppResultWrap';
+  if (originalWrap) originalWrap.id = '_ppResultWrap_planner';
+  renderTarget.appendChild(tempWrap);
+  window._lastComparisonResults = [r];
+  window._selectedPlannerCardIdx = 0;
+  ecoRenderComparisonUI([r]);
+  tempWrap.id = 'favSavedReportRenderInner';
+  if (originalWrap) originalWrap.id = 'ppResultWrap';
 }
 function isFavorite(place) {
+  if (!ecoFavoritesEnabled()) return false;
   if (!place || place.lat == null) return false;
-  return getFavorites().some(f =>
+  return getFavoritesV2().some(f =>
     Math.abs(f.lat - place.lat) < 0.0005 && Math.abs(f.lon - place.lon) < 0.0005);
 }
 
@@ -2667,12 +3280,16 @@ function isFavorite(place) {
 // so the star icon updates in-place instead of collapsing.
 function toggleFavorite(placeStr, event) {
   if (event) event.stopPropagation();
+  if (!ecoFavoritesEnabled()) {
+    if (typeof showToast === 'function') showToast('Favourites are available after account type loads.');
+    return;
+  }
   let place;
   try {
     place = typeof placeStr === 'string' ? JSON.parse(placeStr.replace(/&quot;/g,'"').replace(/&#39;/g,"'")) : placeStr;
   } catch(e) { return; }
 
-  const favs = getFavorites();
+  const favs = getFavoritesV2();
   const idx = favs.findIndex(f =>
     Math.abs(f.lat - place.lat) < 0.0005 && Math.abs(f.lon - place.lon) < 0.0005);
 
@@ -2685,15 +3302,15 @@ function toggleFavorite(placeStr, event) {
     const label = prompt("Enter a label for this place (e.g. Home, Work, School):", "Saved");
     if (label === null) return; // 用户点取消就不收藏了
 
-    favs.unshift({
-      name: place.name, 
-      lat: place.lat, 
+    ecoUpsertFavourite({
+      name: place.name || 'Saved place',
+      customName: label || place.name || 'Saved place',
+      lat: place.lat,
       lon: place.lon,
-      addr: place.addr || '', 
-      tag: label || 'Saved', // 【新增】保存标签
-      savedAt: Date.now()
+      addr: place.addr || '',
+      aiReport: null,
+      createdAt: Date.now()
     });
-    saveFavorites(favs.slice(0, 30));
     showToast(`Saved to ${label || 'favourites'} ⭐`);
   }
 
@@ -2724,6 +3341,19 @@ function switchLb(type) {
    a deterministic hash when backend rows don't carry region metadata, so the
    UI is always populated during the demo.
 */
+const _REGION_EMOJI_OVERRIDES = {
+  'Klang Valley':   '🏙️',
+  'Putrajaya':      '🏛️',
+  'Johor Bahru':    '🌉',
+  'Penang':         '🌴',
+  'Ipoh':           '⛰️',
+  'Melaka':         '🏰',
+  'Alor Setar':     '🌾',
+  'Kota Bharu':     '🎭',
+  'Kuching':        '🐱',
+  'Other Malaysia': '🇲🇾',
+  'Unknown':        '📍',
+};
 const REGION_META = {
   'Klang Valley':  {emoji:'🏙️', sub:'KL · Selangor'},
   'Putrajaya':     {emoji:'🏛️', sub:'Federal Territory'},
@@ -2737,6 +3367,12 @@ const REGION_META = {
   'Other Malaysia':{emoji:'🇲🇾', sub:'Other states'},
   'Unknown':       {emoji:'📍', sub:'Location unknown'},
 };
+// Apply emoji overrides (the dictionary above was mojibake-corrupted in
+// previous saves). This loop replaces just the emoji field, preserving
+// the sub-label, so we don't have to match the bad bytes.
+Object.keys(_REGION_EMOJI_OVERRIDES).forEach(k => {
+  if (REGION_META[k]) REGION_META[k].emoji = _REGION_EMOJI_OVERRIDES[k];
+});
 
 // Rough bounding-box classifier for Malaysian population centres.
 // If future backend trips carry a `region` field, we prefer it over this.
@@ -2818,8 +3454,8 @@ function authSwitch(mode){
   document.getElementById('authSignupFields').style.display = login ? 'none' : 'block';
   document.getElementById('aSubmit').textContent = login ? 'Log in' : 'Create account';
   document.getElementById('aFooter').innerHTML = login
-    ? `Need an account? <span onclick="authSwitch('signup')" style="cursor:pointer">Create one</span>`
-    : `Already have an account? <span onclick="authSwitch('login')" style="cursor:pointer">Log in</span>`;
+    ? 'Need an account? <span onclick="authSwitch(\'signup\')" style="cursor:pointer">Create one</span>'
+    : 'Already have an account? <span onclick="authSwitch(\'login\')" style="cursor:pointer">Log in</span>';
   document.getElementById('aErr').classList.remove('show');
 }
 
@@ -3052,22 +3688,44 @@ const ROUTE_VARIANT_NAMES  = ["Fastest", "Scenic", "Alternate"];
 function getIcon(mode) { return ICONS[MODE_ICON_MAP[mode] || 'car'] || ICONS.car; }
 function getIconBg(mode) { const c = MC[mode] || '#888'; return `background:${c}18;color:${c}`; }
 
-/* ─── MAP ─── */
-let MAPBOX_TOKEN = "";
-fetch("/api/config").then(r => r.json()).then(cfg => {
-  MAPBOX_TOKEN = cfg.mapbox_token;
-  currentMode = null; // force tile layer to rebuild with real token
-  applyMode(getMode());
-});
+/* MAP */
 const map = L.map('map', {zoomControl: true, attributionControl: false}).setView([3.139, 101.687], 13);
+window.map = map;
 
-// 老老实实使用你验证过好用的底图链接（dark-v11 和 256 像素完美适配）
-const TILES = {
-  get day() { return `https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/256/{z}/{x}/{y}?access_token=${MAPBOX_TOKEN}`; },
-  get night() { return `https://api.mapbox.com/styles/v1/mapbox/dark-v11/tiles/256/{z}/{x}/{y}?access_token=${MAPBOX_TOKEN}`; }
+let MAPBOX_TOKEN = "";
+let currentMode = null, tileLayer = null, trafficLayer = null, trafficOn = false;
+
+const OSM_TILE_URL = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+const OSM_TILE_OPTS = {
+  maxZoom: 19,
+  tileSize: 256,
+  attribution: '\u00A9 OpenStreetMap contributors',
+  crossOrigin: true,
 };
 
-let currentMode = null, tileLayer = null, trafficLayer = null, trafficOn = false;
+const TILES = {
+  get day() { return MAPBOX_TOKEN ? `https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/256/{z}/{x}/{y}?access_token=${MAPBOX_TOKEN}` : null; },
+  get night() { return MAPBOX_TOKEN ? `https://api.mapbox.com/styles/v1/mapbox/dark-v11/tiles/256/{z}/{x}/{y}?access_token=${MAPBOX_TOKEN}` : null; }
+};
+
+tileLayer = L.tileLayer(OSM_TILE_URL, OSM_TILE_OPTS).addTo(map);
+currentMode = 'osm';
+
+fetch("/api/config")
+  .then(r => r.json())
+  .then(cfg => {
+    if (cfg && typeof cfg.mapbox_token === "string" && cfg.mapbox_token.length > 20) {
+      MAPBOX_TOKEN = cfg.mapbox_token;
+      window.MAPBOX_TOKEN = MAPBOX_TOKEN;
+      currentMode = null;
+      applyMode(getMode());
+    } else {
+      console.warn('[map] /api/config returned no token - staying on OSM tiles');
+    }
+  })
+  .catch(err => {
+    console.warn('[map] /api/config unreachable - staying on OSM tiles', err);
+  });
 
 function getMode() { 
   const h = new Date().getHours(); 
@@ -3077,23 +3735,30 @@ function getMode() {
 function applyMode(mode) {
   if (mode === currentMode) return;
   currentMode = mode;
-  
-  if (tileLayer) map.removeLayer(tileLayer);
-  tileLayer = L.tileLayer(TILES[mode], {maxZoom: 19, tileSize: 256}).addTo(map);
-  
-  // If the traffic overlay is currently enabled, re-apply it on top of the
-  // new base layer with the correct day/night variant. Crucially, this is a
-  // SEPARATE Leaflet layer from tileLayer — v4 had a bug where it overwrote
-  // the tileLayer variable, which hid the base street map entirely.
-  if (trafficOn) {
-    if (trafficLayer) map.removeLayer(trafficLayer);
-    const trafficStyle = mode === 'day' ? 'mapbox/traffic-day-v2' : 'mapbox/traffic-night-v2';
-    trafficLayer = L.tileLayer(
-      `https://api.mapbox.com/styles/v1/${trafficStyle}/tiles/256/{z}/{x}/{y}?access_token=${MAPBOX_TOKEN}`,
-      {maxZoom: 19, tileSize: 256, opacity: 0.85, pane: 'overlayPane'}
-    ).addTo(map);
+
+  const mapboxUrl = TILES[mode];
+  if (tileLayer) { try { map.removeLayer(tileLayer); } catch(e) {} }
+  if (mapboxUrl) {
+    tileLayer = L.tileLayer(mapboxUrl, {maxZoom: 19, tileSize: 256}).addTo(map);
+  } else {
+    tileLayer = L.tileLayer(OSM_TILE_URL, OSM_TILE_OPTS).addTo(map);
+    console.warn(`[map] applyMode(${mode}) used OSM fallback (no Mapbox token)`);
   }
-  
+
+  if (trafficOn) {
+    if (trafficLayer) { try { map.removeLayer(trafficLayer); } catch(e) {} }
+    if (MAPBOX_TOKEN) {
+      const trafficStyle = mode === 'day' ? 'mapbox/traffic-day-v2' : 'mapbox/traffic-night-v2';
+      trafficLayer = L.tileLayer(
+        `https://api.mapbox.com/styles/v1/${trafficStyle}/tiles/256/{z}/{x}/{y}?access_token=${MAPBOX_TOKEN}`,
+        {maxZoom: 19, tileSize: 256, opacity: 0.85, pane: 'overlayPane'}
+      ).addTo(map);
+    } else {
+      trafficLayer = null;
+      console.warn('[map] traffic overlay disabled: no Mapbox token');
+    }
+  }
+
   const icon = document.getElementById('modeIcon');
   if (icon) {
     if (mode === 'night') {
@@ -3107,6 +3772,10 @@ function applyMode(mode) {
 // Toggle Mapbox traffic overlay on/off. Separate from the base map so the
 // streets are always visible. Legend + FAB state update in sync.
 function toggleTraffic() {
+  if (!MAPBOX_TOKEN) {
+    showToast('Traffic layer needs Mapbox token (set MAPBOX_TOKEN in .env)');
+    return;
+  }
   trafficOn = !trafficOn;
   if (trafficOn) {
     const trafficStyle = currentMode === 'day' ? 'mapbox/traffic-day-v2' : 'mapbox/traffic-night-v2';
@@ -3117,7 +3786,7 @@ function toggleTraffic() {
     if (typeof rL !== 'undefined') rL.forEach(pl => pl.bringToFront());
     showToast('Traffic layer on');
   } else {
-    if (trafficLayer) { map.removeLayer(trafficLayer); trafficLayer = null; }
+    if (trafficLayer) { try { map.removeLayer(trafficLayer); } catch(e) {} trafficLayer = null; }
     showToast('Traffic layer off');
   }
   const btn = document.getElementById('fabTraffic');
@@ -3189,6 +3858,7 @@ map.on('zoomend', function() {
   else if (z < 13) { sU.forEach((u,i) => u.m.setOpacity(i%3===0?1:0)); if(meM) meM.setOpacity(1); }
   else { sU.forEach(u => u.m.setOpacity(1)); if(meM) meM.setOpacity(1); }
 });
+map.on('moveend', () => { if (ECO_MODE === 'planner') ecoRefreshPlannerHeatmap(); });
 
 function locateMe() {
   if (navigator.geolocation) {
@@ -3277,7 +3947,8 @@ function onSearchFocus(k) {
 // Shared row renderer — every dropdown row gets a ⭐ star button aligned
 // to the right. Star click toggles favourite without triggering row select.
 function renderSdRow(p, k, iconSvg) {
-  const fav = isFavorite(p);
+  const favEnabled = ecoFavoritesEnabled();
+  const fav = favEnabled && isFavorite(p);
   const jsonStr = escJson(JSON.stringify(p));
   iconSvg = iconSvg || `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>`;
   const starSvg = `<svg viewBox="0 0 24 24" fill="${fav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`;
@@ -3287,13 +3958,13 @@ function renderSdRow(p, k, iconSvg) {
       <div class="sd-name">${escHtml(p.name)}</div>
       <div class="sd-addr">${escHtml(p.addr || '')}</div>
     </div>
-    <button class="sd-fav ${fav ? 'on' : ''}" onclick='toggleFavorite(${jsonStr}, event)' title="${fav ? 'Remove from favourites' : 'Save to favourites'}">${starSvg}</button>
+    ${favEnabled ? `<button class="sd-fav ${fav ? 'on' : ''}" onclick='toggleFavorite(${jsonStr}, event)' title="${fav ? 'Remove from favourites' : 'Save to favourites'}">${starSvg}</button>` : ''}
   </div>`;
 }
 
 function renderDefaultSearchList(k) {
   const recent = getRecentPlaces();
-  const favs = getFavorites();
+  const favs = ecoFavoritesEnabled() ? getFavoritesV2() : [];
   
   // 【修复】：用通用方式获取输入框
   const inpId = (k === 's') ? 'iStart' : (k === 'e' ? 'iEnd' : k);
@@ -3449,10 +4120,20 @@ function selectPlace(placeJsonStr, k) {
     return;
   }
 
+  const prev = (k === 's') ? C.s : (k === 'e' ? C.e : null);
   // Store: 's' (start), 'e' (end), or 'wpN' (intermediate stop)
   if (k === 's') C.s = place;
   else if (k === 'e') C.e = place;
   else C[k] = place;
+
+  // 【关键修复】：新起终点与旧计划相差较远时，旧中途站通常失效，统一清空避免“幽灵 stops”
+  if ((k === 's' || k === 'e') && prev && prev.lat != null && prev.lon != null) {
+    const movedKm = haversine(prev.lat, prev.lon, place.lat, place.lon);
+    if (movedKm >= 5) {
+      clearAllWaypoints();
+      ecoShowDemoToast('Stops cleared - new start is far from the old plan.');
+    }
+  }
 
   // Update the input field
   const inp = document.getElementById(k === 's' ? 'iStart' : (k === 'e' ? 'iEnd' : k));
@@ -3536,15 +4217,8 @@ async function pickCurrentLoc(k) {
 // 覆写原版的 clrIn 函数，清除文字时把地图上的图钉也拔掉
 function clrIn(k, e) {
   e.stopPropagation();
-  const id = k === 's' ? 'iStart' : 'iEnd';
-  document.getElementById(id).value = '';
-  document.getElementById(k === 's' ? 'clrS' : 'clrE').classList.remove('vis');
-  if (k === 's') C.s = null; else C.e = null;
-  
-  // 【关键修复】：拔掉图钉
-  if (draftMarkers[k]) { map.removeLayer(draftMarkers[k]); draftMarkers[k] = null; }
-  
-  if (!C.s || !C.e) closePanel();
+  nukeAllPlanState();
+  closePanel();
   clrMap();
   hideDropdown();
 }
@@ -3635,8 +4309,72 @@ function navTo(tab) {
   closePanel(); 
 
   // 关键：切换 body 的状态来触发 CSS 动画
+    // Favourites is a top-level fixed panel (not a .side-panel). Close standard
+  // .side-panel siblings, hide the planner panel, then show ours.
+  if (tab === 'favourites') {
+    if (!ecoFavoritesEnabled()) {
+      document.body.classList.remove('side-panel-open');
+      if (typeof showToast === 'function') showToast('Favourites are available after account type loads.');
+      return;
+    }
+    document.body.classList.add('side-panel-open');
+    document.querySelectorAll('.side-panel').forEach(p => p.classList.remove('open'));
+    document.querySelectorAll('.rail-item').forEach(n => n.classList.remove('active'));
+    const _plannerPanel = document.getElementById('plannerPanel');
+    if (_plannerPanel) _plannerPanel.classList.remove('open');
+    const _favPanel = document.getElementById('favouritesPanel');
+    if (_favPanel) {
+      // Make it laid out, then add .open on the next frame so the
+      // translateX/opacity transition can run.
+      _favPanel.classList.add('visible');
+      _favPanel.classList.remove('open');
+      // eslint-disable-next-line no-unused-expressions
+      _favPanel.offsetWidth;
+      requestAnimationFrame(() => _favPanel.classList.add('open'));
+    }
+    const _railFav = document.getElementById('railFavourites');
+    if (_railFav) _railFav.classList.add('active');
+    if (typeof ecoRenderFavouritesList === 'function') ecoRenderFavouritesList();
+    return;
+  }
+  // Hide the favourites panel when navigating to any other tab.
+  {
+    const _favPanelOther = document.getElementById('favouritesPanel');
+    if (_favPanelOther) {
+      _favPanelOther.classList.remove('open');
+      // wait for transition to finish before removing from layout
+      setTimeout(() => {
+        if (!_favPanelOther.classList.contains('open')) {
+          _favPanelOther.classList.remove('visible');
+        }
+      }, 320);
+    }
+  }
+
   if (tab === 'map') {
     document.body.classList.remove('side-panel-open');
+    // The rail "Planner" icon (railMap) should always bring the 15-Min City
+    // Planner panel back when the user is in planner mode (business accounts,
+    // or anyone who toggled planner mode), even if a previous flow (e.g.
+    // Accept & Save) removed the .open class or somehow flipped ECO_MODE.
+    const _isBusinessAcct = (typeof ecoAccountType !== 'undefined' && ecoAccountType === 'business');
+    const _wasPlannerMode = (typeof ECO_MODE !== 'undefined' && ECO_MODE === 'planner')
+                         || document.body.classList.contains('planner-mode');
+    if (_isBusinessAcct || _wasPlannerMode) {
+      if (typeof ecoSwitchMode === 'function' && ECO_MODE !== 'planner') {
+        ecoSwitchMode('planner');
+      } else {
+        // Already in planner mode — just make sure the panel is on-screen.
+        document.body.classList.add('planner-mode');
+        const _plannerPanelEl = document.getElementById('plannerPanel');
+        if (_plannerPanelEl) {
+          _plannerPanelEl.classList.remove('open');
+          // eslint-disable-next-line no-unused-expressions
+          _plannerPanelEl.offsetWidth;
+          requestAnimationFrame(() => _plannerPanelEl.classList.add('open'));
+        }
+      }
+    }
   } else {
     document.body.classList.add('side-panel-open');
   }
@@ -3646,7 +4384,7 @@ function navTo(tab) {
   // 对应表：tab 名称 → HTML id 后缀
   const RAIL_ID_MAP = {
     map: 'Map', impact: 'Impact', leaderboard: 'LB', carpool: 'Carpool',
-    chat: 'Chat', profile: 'Profile', settings: 'Settings', billing: 'Billing'
+    recommend: 'Recommend', chat: 'Chat', profile: 'Profile', settings: 'Settings', billing: 'Billing'
   };
   const railSuffix = RAIL_ID_MAP[tab] || tab.charAt(0).toUpperCase() + tab.slice(1);
   const railEl = document.getElementById('rail' + railSuffix);
@@ -3671,6 +4409,9 @@ function navTo(tab) {
 
 function closeSidePanel() {
   document.querySelectorAll('.side-panel').forEach(p => p.classList.remove('open'));
+  document.body.classList.remove('side-panel-open');
+  const favPanel = document.getElementById('favouritesPanel');
+  if (favPanel) favPanel.classList.remove('open', 'visible');
   document.querySelectorAll('.rail-item').forEach(n => n.classList.remove('active'));
   document.getElementById('railMap').classList.add('active');
 }
@@ -4044,6 +4785,7 @@ function travelModeKey(mode) {
 }
 
 async function getRoute() {
+  const gen = _planGen;
   const pc = document.getElementById('panelContent');
   const pf = document.getElementById('panelFooterBar');
   pc.innerHTML = `
@@ -4068,8 +4810,13 @@ async function getRoute() {
         language: getSettings().language || 'en',
       })
     });
+    if (gen !== _planGen) return;
     const data = await r.json();
+    if (gen !== _planGen) return;
     window._lastAnalysis = data;
+    // Cache variants so auto-nav safety fallback can re-render picker UI
+    // if _paths is not ready when startNavigation() is attempted.
+    window._variants = null;
 
     // For modes whose journey naturally has multiple physical legs (Bus,
     // MRT, Park & Ride, Park & Walk) we fetch each leg with its OWN OSRM
@@ -4141,6 +4888,7 @@ async function getRoute() {
 
     // Build 3 variant options for the selected mode (baseOpt already set above)
     const variants = buildRouteVariants(baseOpt, paths, data.journey.distance_km);
+    window._variants = variants;
 
     renderRouteOptions(data, variants, paths);
     drawMapRoutes(paths, variants);
@@ -4587,6 +5335,27 @@ function buildRouteVariants(baseOpt, paths, baseDistKm) {
 
 /* ═══ RENDER ROUTE OPTIONS UI ═══ */
 function renderRouteOptions(data, variants, paths) {
+  if (J._autoNavigate && Array.isArray(variants) && variants.length > 0) {
+    J._autoNavigate = false;
+    const modeKey = (J.mode || '').toLowerCase();
+    const preferred = variants.find(v => {
+      const vm = (v.mode || '').toLowerCase();
+      return modeKey.split(/[\s/]+/).some(w => w.length > 2 && vm.includes(w));
+    }) || variants[0];
+    J.selectedRoute = preferred;
+    setTimeout(() => {
+      if (!_paths || !J.selectedRoute) {
+        console.warn('[auto-nav] _paths not ready, falling back to Route Options UI');
+        if (window._lastAnalysis && window._variants) {
+          renderRouteOptions(window._lastAnalysis, window._variants, _paths);
+        }
+        return;
+      }
+      startNavigation();
+    }, 350);
+    return;
+  }
+
   const pc = document.getElementById('panelContent');
   const pf = document.getElementById('panelFooterBar');
   const j = data.journey;
@@ -5447,7 +6216,45 @@ function beginNavSim() {
     parkLat: parkLat,
     parkLon: parkLon,
     needsParkedPrompt: needsParkedPrompt,
+    _lastAheadCheckSimS: -25,
+    _aheadDismissed: false,
+    _aheadChecking: false,
+    _aheadSwitched: false,
+    carbonAccumulatedKg: 0,
+    phaseStartDistKm: 0,
+    phaseRate: _phaseCarbonRate(v.mode, needsParkedPrompt ? 'drive' : 'drive'),
   };
+
+  // 构建 waypoint stop 索引：把输入的中途点映射到当前导航折线的累计里程
+  navState.waypointStops = [];
+  if (!isParkWalk && !isParkRide) {
+    const orderedWaypoints = [];
+    document.querySelectorAll('#waypointsContainer .sinput').forEach(inp => {
+      const c = C[inp.id];
+      if (c) orderedWaypoints.push({
+        id: inp.id, name: inp.value || c.name || 'Stop', lat: c.lat, lon: c.lon,
+      });
+    });
+    for (const wp of orderedWaypoints) {
+      const snap = _snapToPolyline(phase1Coords, wp.lat, wp.lon);
+      if (snap && snap.distKm > 0.1 && snap.distKm < phase1DistKm - 0.1) {
+        navState.waypointStops.push({
+          name: wp.name, lat: wp.lat, lon: wp.lon,
+          distKm: snap.distKm, coords_idx: snap.idx, reached: false,
+        });
+      }
+    }
+    navState.waypointStops.sort((a, b) => a.distKm - b.distKm);
+  }
+  navState._stopMarkers = [];
+  navState.waypointStops.forEach((s, i) => {
+    const icon = L.divIcon({
+      html: `<div style="width:28px;height:28px;border-radius:50%;background:#F59E0B;color:#fff;border:3px solid #fff;display:flex;align-items:center;justify-content:center;font-family:var(--font);font-weight:700;font-size:12px;box-shadow:0 2px 8px rgba(0,0,0,.4);">${i + 1}</div>`,
+      className: '', iconSize: [28, 28], iconAnchor: [14, 14],
+    });
+    const m = L.marker([s.lat, s.lon], { icon, zIndexOffset: 600 }).addTo(map);
+    navState._stopMarkers.push(m);
+  });
 
   // 车头箭头 — class="nav-arrow-svg" 让 navTick 可以精确找到这个 SVG 来旋转
   // 白色填充 + 黑色薄描边，类似 Google Maps 导航箭头，在深色底图上清晰可见
@@ -5509,6 +6316,15 @@ const NAV_SIM_SCALE_BY_MODE = {
 };
 const NAV_SIM_SCALE_DEFAULT = 8;
 
+function _phaseCarbonRate(mode, phase) {
+  if (phase === 'walk' || phase === 'cycle') return 0;
+  if (phase === 'rail' || phase === 'transit') return 0.041; // mirror main.py CO2['mrt_lrt']
+  if (phase === 'bus') return 0.089; // mirror main.py CO2['bus']
+  if (mode === 'Motorcycle') return 0.103;
+  if (mode === 'Carpool') return 0.0855;
+  return 0.171; // Drive/Grab/P&W drive/P&R drive
+}
+
 function getNavSimScale() {
   const mode = navState?.variant?.mode;
   return NAV_SIM_SCALE_BY_MODE[mode] || NAV_SIM_SCALE_DEFAULT;
@@ -5541,6 +6357,20 @@ function navTick() {
   navState.distTraveledKm += navState.currentKmh * simDtHours;
   navState.elapsedSimS += realDt * simScale;
 
+  // Waypoint arrival check：在终点判断前先处理中途站暂停
+  if (navState.waypointStops && navState.waypointStops.length) {
+    const nextStop = navState.waypointStops.find(s => !s.reached);
+    if (nextStop && navState.distTraveledKm >= nextStop.distKm) {
+      declineAheadSwitch();
+      navState.distTraveledKm = nextStop.distKm;
+      nextStop.reached = true;
+      navState.running = false;
+      showWaypointReachedPanel(nextStop);
+      speak(`Arrived at ${nextStop.name}. Tap continue when ready.`);
+      return;
+    }
+  }
+
   const pos = pointAtDistanceKm(navState.coords, navState.distTraveledKm);
 
   if (pos && navState.vehMarker) {
@@ -5572,9 +6402,10 @@ function navTick() {
 
     // Live CO₂ update — proportional to distance travelled
     if (navState.variant && document.getElementById('liveCarbon')) {
-      const carbonFactor = navState.variant.carbon_kg / Math.max(0.1, navState.variant.distance_km);
-      const liveCarbon = (navState.distTraveledKm * carbonFactor).toFixed(3);
-      document.getElementById('liveCarbon').textContent = liveCarbon;
+      const phaseDistKm = Math.max(0, navState.distTraveledKm - (navState.phaseStartDistKm || 0));
+      const phaseCarbon = phaseDistKm * (navState.phaseRate || 0);
+      const liveCarbonKg = (navState.carbonAccumulatedKg || 0) + phaseCarbon;
+      document.getElementById('liveCarbon').textContent = liveCarbonKg.toFixed(3);
     }
   }
 
@@ -5584,6 +6415,8 @@ function navTick() {
     updateNavUI();
     checkNextStep(pos, navState.distTraveledKm / Math.max(0.01, navState.totalDistKm));
   }
+
+  maybeCheckAhead(pos);
 
   // Arrival
   if (navState.distTraveledKm >= navState.totalDistKm) {
@@ -5689,6 +6522,55 @@ function showParkedPrompt() {
   if (instrEl) instrEl.textContent = isPnR
     ? 'Park, then board the train when ready.'
     : 'Park your car — final walking leg is ready when you are.';
+}
+
+function showWaypointReachedPanel(stop) {
+  const navBottom = document.querySelector('#navView .nav-bottom');
+  if (!navBottom || !navState) return;
+  const remaining = navState.waypointStops.filter(s => !s.reached);
+  const nextLabel = remaining.length ? remaining[0].name : ((C.e && C.e.name) || 'destination');
+
+  navBottom.classList.add('parked-active');
+  navBottom.innerHTML = `
+    <div class="parked-panel">
+      <div class="pp-head">
+        <div class="pp-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+            <circle cx="12" cy="10" r="3"/>
+          </svg>
+        </div>
+        <div class="pp-text">
+          <div class="pp-title">Arrived at ${escHtml(stop.name)}</div>
+          <div class="pp-sub">Take your time. Tap continue when you're ready to head to ${escHtml(nextLabel)}.</div>
+        </div>
+      </div>
+      <div class="pp-actions">
+        <button class="pp-primary" onclick="continueFromWaypoint()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          Continue to next stop
+        </button>
+        <button class="pp-end" onclick="endNav()" title="End trip" aria-label="End trip">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+    </div>
+  `;
+
+  const instrEl = document.getElementById('navInstr');
+  if (instrEl) instrEl.textContent = `Stopped at ${stop.name}`;
+  const distEl = document.getElementById('navNextDist');
+  if (distEl) distEl.innerHTML = `Paused<span></span>`;
+}
+
+function continueFromWaypoint() {
+  if (!navState) return;
+  renderNavBottomBase();
+  navState.lastTickRealMs = Date.now();
+  navState.lastPos = pointAtDistanceKm(navState.coords, navState.distTraveledKm);
+  navState.running = true;
+  speak('Continuing.');
+  requestAnimationFrame(navStepAnim);
 }
 
 /** Rebuild the standard nav-bottom (progress bar + 4 stats + End Trip).
@@ -5799,6 +6681,8 @@ async function handleIveParked() {
   const phase2Km   = phase2.distance_m / 1000;
   const phase2TimeS = phase2.duration_s;
   const targetKmh  = isWalk ? 5 : (isRail ? 50 : 35);
+  const phase1DistKm = Math.max(0, navState.distTraveledKm - (navState.phaseStartDistKm || 0));
+  navState.carbonAccumulatedKg = (navState.carbonAccumulatedKg || 0) + phase1DistKm * (navState.phaseRate || 0);
 
   // Rebuild navState for phase 2
   navState.phase            = isWalk ? 'walk' : (isRail ? 'rail' : 'next');
@@ -5808,6 +6692,7 @@ async function handleIveParked() {
   navState.totalTimeS       = phase2TimeS;
   navState.elapsedSimS      = 0;
   navState.distTraveledKm   = 0;
+  navState.phaseStartDistKm = 0;
   navState.targetKmh        = targetKmh;
   navState.currentKmh       = targetKmh;
   navState.baseKmh          = targetKmh;
@@ -5816,6 +6701,7 @@ async function handleIveParked() {
   navState.nextStepIdx      = 0;
   navState.needsParkedPrompt = false;   // phase 2 → no more prompts
   navState.running          = true;
+  navState.phaseRate        = _phaseCarbonRate(v.mode, navState.phase);
 
   // Reset the top direction icon (was changed to a parking icon by showParkedPrompt)
   const dirIconEl = document.getElementById('navDirIcon');
@@ -5863,6 +6749,225 @@ function pointAtDistanceKm(coords, dKm) {
     cum += seg;
   }
   return coords[coords.length-1];
+}
+
+function _snapToPolyline(coords, lat, lon) {
+  if (!coords || coords.length < 2) return null;
+  let bestI = 0;
+  let bestD2 = Infinity;
+  for (let i = 0; i < coords.length; i++) {
+    const dy = coords[i][0] - lat;
+    const dx = coords[i][1] - lon;
+    const d2 = dy * dy + dx * dx;
+    if (d2 < bestD2) { bestD2 = d2; bestI = i; }
+  }
+  let km = 0;
+  for (let i = 1; i <= bestI; i++) {
+    km += haversine(coords[i-1][0], coords[i-1][1], coords[i][0], coords[i][1]);
+  }
+  return { idx: bestI, distKm: km };
+}
+
+function indexAtDistanceKm(coords, dKm) {
+  if (!coords || coords.length < 2) return 0;
+  let cum = 0;
+  for (let i = 1; i < coords.length; i++) {
+    const seg = haversine(coords[i-1][0], coords[i-1][1], coords[i][0], coords[i][1]);
+    if (cum + seg >= dKm) return Math.max(0, i - 1);
+    cum += seg;
+  }
+  return coords.length - 1;
+}
+
+function drawCongestionSegments(segs) {
+  if (!segs || !segs.length) return [];
+  const layers = [];
+  for (const seg of segs) {
+    if (!seg.coords || seg.coords.length < 2) continue;
+    const ln = L.polyline(seg.coords, {
+      color: '#EF4444', weight: 8, opacity: 0.55, lineCap: 'round', dashArray: '4, 8',
+    }).addTo(map);
+    layers.push(ln);
+  }
+  return layers;
+}
+
+function maybeCheckAhead(pos) {
+  if (!navState || !navState.running || navState._aheadChecking) return;
+  const mode = navState.variant?.mode;
+  const allowed = new Set(['Drive', 'Carpool', 'Motorcycle', 'Grab / E-hailing']);
+  const remainingKm = Math.max(0, navState.totalDistKm - navState.distTraveledKm);
+  if (!allowed.has(mode) || navState._aheadDismissed || navState._aheadSwitched || remainingKm <= 2) return;
+  if ((navState.elapsedSimS - (navState._lastAheadCheckSimS || 0)) < 25) return;
+  navState._lastAheadCheckSimS = navState.elapsedSimS;
+  checkAhead(pos);
+}
+
+async function checkAhead(pos) {
+  if (!navState || navState._aheadChecking) return;
+  navState._aheadChecking = true;
+  try {
+    const idx = indexAtDistanceKm(navState.coords, navState.distTraveledKm);
+    const remainingCoords = navState.coords.slice(idx);
+    if (pos && remainingCoords.length) remainingCoords[0] = pos;
+    const body = {
+      user_id: USER?.id || 'guest',
+      current_lat: pos ? pos[0] : navState.coords[0][0],
+      current_lon: pos ? pos[1] : navState.coords[0][1],
+      end_lat: C.e.lat,
+      end_lon: C.e.lon,
+      remaining_route_coords: remainingCoords,
+      current_mode: navState.variant.mode,
+      distance_remaining_km: Math.max(0, navState.totalDistKm - navState.distTraveledKm),
+    };
+    const r = await fetch(`${API}/api/v1/in-trip/check-ahead`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'X-User-ID': USER?.id || 'guest'},
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(4000),
+    });
+    if (!r.ok) return;
+    const payload = await r.json();
+    if (payload && payload.suggest_park_walk && !navState._aheadDismissed && !navState._aheadSwitched) {
+      showAheadSuggestion(payload);
+    }
+  } catch(e) {
+    // Network/timeout is non-fatal; nav loop will try again on the next tick.
+  } finally {
+    if (navState) navState._aheadChecking = false;
+  }
+}
+
+function showAheadSuggestion(payload) {
+  const banner = document.getElementById('aheadBanner');
+  if (!banner || !navState) return;
+  const p = payload.parking || {};
+  const units = getSettings().units;
+  const walkKm = Number(p.walk_km || 0);
+  const walkLabel = units === 'imperial'
+    ? `${(walkKm * 0.621371).toFixed(1)} mi`
+    : `${walkKm.toFixed(2)} km`;
+  const saveLabel = Math.max(1, Math.round(payload.time_saved_mins || 0));
+  const co2Label = Number(payload.co2_saved_kg || 0).toFixed(2);
+  banner.innerHTML = `
+    <div class="ab-head">
+      <div class="ab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 4.3L2.8 17.3A2 2 0 0 0 4.5 20h15a2 2 0 0 0 1.7-2.7L13.7 4.3a2 2 0 0 0-3.4 0z"/><path d="M12 8v5M12 17h.01"/></svg></div>
+      <div class="ab-text">
+        <div class="ab-title">Heavy congestion ahead ${payload.source === 'mapbox' ? '<span class="ab-live">Live</span>' : ''}</div>
+        <div class="ab-sub">Park at ${escHtml(p.name || 'a nearby lot')} and walk the last stretch - saves about ${saveLabel} min.</div>
+      </div>
+      <button class="ab-dismiss" onclick="declineAheadSwitch()" title="Dismiss" aria-label="Dismiss"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+    </div>
+    <div class="ab-meta"><span><b>${walkLabel}</b> walk</span><span><b>${co2Label}</b> kg CO2 saved</span></div>
+    <div class="ab-actions"><button class="ab-primary" onclick="acceptAheadSwitch()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>Switch to Park & Walk</button><button class="ab-secondary" onclick="declineAheadSwitch()">Keep going</button></div>`;
+  banner.hidden = false;
+  void banner.offsetWidth;
+  banner.classList.add('show');
+  if (navState._congestionOverlays) navState._congestionOverlays.forEach(l => { try { map.removeLayer(l); } catch(e) {} });
+  navState._congestionOverlays = drawCongestionSegments(payload.congestion_segments || []);
+  navState._aheadPayload = payload;
+  speak(payload.reason === 'heavy_congestion'
+    ? 'Heavy traffic ahead. Recommended Park and Walk.'
+    : 'Conditions ahead - recommended Park and Walk.');
+}
+
+function straightLeg(profile, type, p1, p2) {
+  const distM = haversine(p1.lat, p1.lon, p2.lat, p2.lon) * 1000;
+  const speed = profile === 'foot' ? 1.4 : 11;
+  return {
+    type, profile, dashed: type === 'walk',
+    coords: [[p1.lat, p1.lon], [p2.lat, p2.lon]],
+    distance_m: distM,
+    duration_s: distM / speed,
+    steps: [],
+    from: {lat: p1.lat, lon: p1.lon, label: p1.label || ''},
+    to: {lat: p2.lat, lon: p2.lon, label: p2.label || ''},
+    isApprox: true,
+  };
+}
+
+async function acceptAheadSwitch(payload) {
+  if (!navState) return;
+  const banner = document.getElementById('aheadBanner');
+  if (banner) { banner.classList.remove('show'); setTimeout(() => { banner.hidden = true; }, 280); }
+  payload = payload || navState._aheadPayload;
+  const p = payload && payload.parking;
+  if (!p) return declineAheadSwitch();
+
+  const cur = pointAtDistanceKm(navState.coords, navState.distTraveledKm) || navState.lastPos || navState.coords[0];
+  const curPt = {lat: cur[0], lon: cur[1], label: 'Current position'};
+  const parkPt = {lat: p.lat, lon: p.lon, label: p.name || 'Parking'};
+  const destPt = {lat: C.e.lat, lon: C.e.lon, label: C.e.name || 'Destination'};
+
+  let driveLeg = await fetchOSRMSingleLeg('driving', curPt.lat, curPt.lon, parkPt.lat, parkPt.lon);
+  let walkLeg  = await fetchOSRMSingleLeg('foot', parkPt.lat, parkPt.lon, destPt.lat, destPt.lon);
+  driveLeg = driveLeg ? {...driveLeg, type:'drive', profile:'driving', dashed:false, from:curPt, to:parkPt} : straightLeg('driving', 'drive', curPt, parkPt);
+  walkLeg  = walkLeg  ? {...walkLeg,  type:'walk',  profile:'foot',    dashed:true,  from:parkPt, to:destPt} : straightLeg('foot', 'walk', parkPt, destPt);
+
+  const newPath = {
+    coords: driveLeg.coords.concat(walkLeg.coords.slice(1)),
+    distance_m: driveLeg.distance_m + walkLeg.distance_m,
+    duration_s: driveLeg.duration_s + walkLeg.duration_s,
+    steps: driveLeg.steps || [],
+    legs: [driveLeg, walkLeg],
+  };
+
+  const v = navState.variant;
+  _paths[v.pathIdx] = newPath;
+  v.mode = 'Park & Walk';
+  v.variantName = 'In-trip Park & Walk';
+  v.distance_km = newPath.distance_m / 1000;
+  v.time_mins = Math.round(newPath.duration_s / 60);
+  v.carbon_kg = Number(((driveLeg.distance_m / 1000) * 0.171).toFixed(3));
+  v.route_preview = {
+    parking: {label:p.name || 'Parking', lat:p.lat, lon:p.lon},
+    map_points: [
+      {lat:curPt.lat, lon:curPt.lon, label:'Current position', kind:'start'},
+      {lat:p.lat, lon:p.lon, label:p.name || 'Parking', kind:'parking'},
+      {lat:C.e.lat, lon:C.e.lon, label:C.e.name || 'Destination', kind:'end'},
+    ],
+  };
+
+  navState._aheadSwitched = true;
+  navState.variant = v;
+  navState.coords = driveLeg.coords.slice();
+  navState.steps = driveLeg.steps || [];
+  navState.totalDistKm = driveLeg.distance_m / 1000;
+  navState.totalTimeS = driveLeg.duration_s;
+  navState.elapsedSimS = 0;
+  navState.distTraveledKm = 0;
+  navState.phase = 'drive';
+  navState.parkLat = p.lat;
+  navState.parkLon = p.lon;
+  navState.needsParkedPrompt = true;
+  navState.lastTickRealMs = Date.now();
+  navState.lastPos = driveLeg.coords[0];
+  navState.nextStepIdx = 0;
+  renderNavBottomBase();
+
+  drawMapRoutes(_paths, window._variants || [v]);
+  const pin = L.divIcon({
+    html:`<div class="map-pin-lg" style="background:var(--accent);color:#fff;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2.5"/><path d="M9 17V8h4a2.5 2.5 0 0 1 0 5H9"/></svg></div>`,
+    className:'', iconSize:[32,32], iconAnchor:[16,32],
+  });
+  mL.push(L.marker([p.lat, p.lon], {icon:pin}).addTo(map).bindPopup(escHtml(p.name || 'Parking')));
+
+  speak(`Switching to Park and Walk. New parking at ${p.name || 'the selected lot'}.`);
+  updateNavUI();
+  requestAnimationFrame(navStepAnim);
+}
+
+function declineAheadSwitch() {
+  const banner = document.getElementById('aheadBanner');
+  if (banner) { banner.classList.remove('show'); setTimeout(() => { banner.hidden = true; }, 280); }
+  if (navState) {
+    navState._aheadDismissed = true;
+    navState._aheadPayload = null;
+    if (navState._congestionOverlays) {
+      navState._congestionOverlays.forEach(l => { try { map.removeLayer(l); } catch(e) {} });
+      navState._congestionOverlays = [];
+    }
+  }
 }
 
 function checkNextStep(pos, frac) {
@@ -6044,12 +7149,20 @@ function toggleMute() {
 }
 
 function endNav() {
+  const _ab = document.getElementById('aheadBanner');
+  if (_ab) { _ab.classList.remove('show'); _ab.hidden = true; }
   // 1. 关闭引擎和清理车辆 + 清理拥堵段叠加层
   if (navState) {
     navState.running = false;
     if (navState.vehMarker) map.removeLayer(navState.vehMarker);
     if (navState.congestionLayers) {
       navState.congestionLayers.forEach(l => map.removeLayer(l));
+    }
+    if (navState._stopMarkers) {
+      navState._stopMarkers.forEach(l => { try { map.removeLayer(l); } catch(e) {} });
+    }
+    if (navState._congestionOverlays) {
+      navState._congestionOverlays.forEach(l => { try { map.removeLayer(l); } catch(e) {} });
     }
   }
   navState = null;
@@ -6086,12 +7199,7 @@ function endNav() {
 
   // 6. 回到初始规划态（Planning 占位卡 + 清空搜索 input + 拔图钉）
   clrMap();
-  if (document.getElementById('iStart')) { document.getElementById('iStart').value = ''; }
-  if (document.getElementById('iEnd'))   { document.getElementById('iEnd').value = ''; }
-  C.s = null; C.e = null;
-  for (const k of Object.keys(C)) { if (/^wp\d+$/.test(k)) delete C[k]; }
-  document.getElementById('clrS')?.classList.remove('vis');
-  document.getElementById('clrE')?.classList.remove('vis');
+  nukeAllPlanState();
   showPlanningState();
 }
 
@@ -6103,6 +7211,8 @@ function arrivedAtDestination() {
   // Stop the engine but DON'T tear down the route line yet — user wants to
   // see the full route one more time on the summary screen
   if (navState) {
+    const lastPhaseKm = Math.max(0, navState.distTraveledKm - (navState.phaseStartDistKm || 0));
+    navState.carbonAccumulatedKg = (navState.carbonAccumulatedKg || 0) + lastPhaseKm * (navState.phaseRate || 0);
     navState.running = false;
     if (navState.vehMarker) map.removeLayer(navState.vehMarker);
   }
@@ -6112,13 +7222,13 @@ function arrivedAtDestination() {
   // Numbers for the summary card
   const totalKm  = (v?.distance_km || 0);
   const totalMin = (v?.time_mins || 0);
-  const co2Kg    = (v?.carbon_kg || 0);
+  const co2Kg    = navState ? +((navState.carbonAccumulatedKg || 0).toFixed(3)) : (v?.carbon_kg || 0);
   const ecoScore = (v?.eco_score != null ? v.eco_score : 0);
   // Carbon saved vs a regular drive alone. If the backend supplied a figure, use it;
-  // otherwise approximate using the standard 0.192 kg CO2/km petrol car emission factor.
+  // otherwise approximate using the backend drive factor (main.py CO2['drive']=0.171).
   let carbonSavedKg = v?.carbon_saved_vs_driving;
   if (carbonSavedKg == null) {
-    const driveCO2 = totalKm * 0.192;
+    const driveCO2 = totalKm * 0.171;
     carbonSavedKg = Math.max(0, +(driveCO2 - co2Kg).toFixed(2));
   }
   const treesEq = +(carbonSavedKg * 0.05).toFixed(2); // rough: 1 tree ≈ 20kg CO2/yr
@@ -6328,23 +7438,17 @@ async function sendChat() {
 
   const msgs = document.getElementById('chatMsgs');
   msgs.innerHTML += `<div class="chat-msg user">${escHtml(msg)}</div>`;
-
-  msgs.innerHTML += `<div class="chat-msg ai" id="chatTyping" style="opacity:.5">🔥 Genkit Agent thinking…</div>`;
+  msgs.innerHTML += `<div class="chat-msg ai" id="chatTyping" style="opacity:.5">${ACTIVE_AGENT === 'genkit' ? '\uD83D\uDD25 Genkit' : '\u2728 Gemini'} Agent thinking\u2026</div>`;
   msgs.scrollTop = msgs.scrollHeight;
 
   try {
-    // We standardised on Firebase Genkit as the single agentic orchestrator
-    // (per FAQ: "You only need to choose one"). Vertex Agent Builder removed.
     const endpoint = `${API}/api/v1/agent`;
-
     const r = await fetch(endpoint, {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
         user_id: USER.id,
         message: msg,
         language: 'en',
-        // Pass cached browser geolocation so the agent can resolve "near me"
-        // without asking the user for coordinates.
         user_lat: (typeof ecoUserPos === 'object' && ecoUserPos) ? ecoUserPos.lat : null,
         user_lon: (typeof ecoUserPos === 'object' && ecoUserPos) ? ecoUserPos.lon : null,
       }),
@@ -6352,24 +7456,80 @@ async function sendChat() {
     const d = await r.json();
     const typing = document.getElementById('chatTyping');
 
-    // Surface agent + tools used + RAG citations
     const toolsUsed = Array.isArray(d.tools_used) && d.tools_used.length
-      ? `<div style="font-size:10px;opacity:.6;display:block;margin-top:4px">🔧 ${d.tools_used.join(' → ')}</div>`
+      ? `<div style="font-size:10px;opacity:.6;display:block;margin-top:4px">tools: ${d.tools_used.join(' -> ')}</div>`
       : '';
+    const orchestratorLabel = d.orchestrator || 'Gemini';
+    const isGenkitLive = (d.orchestrator || '').toLowerCase().includes('genkit');
+    const orchestratorIcon = isGenkitLive ? '\uD83D\uDD25' : '\u2699\uFE0F';
+    let diag = '';
+    if (!isGenkitLive) {
+      const why = [];
+      if (d.genkit_status && d.genkit_status.init_error) why.push(`Genkit: ${d.genkit_status.init_error}`);
+      if (d.genkit_status && d.genkit_status.runtime_error) why.push(`Genkit runtime: ${d.genkit_status.runtime_error}`);
+      if (d.genkit_status && d.genkit_status.raw_gemini_error) why.push(`Gemini: ${d.genkit_status.raw_gemini_error}`);
+      if (d.fallback_reason) why.push(`Fallback: ${d.fallback_reason}`);
+      if (why.length) diag = ` <span title="${escHtml(why.join(' | '))}" style="cursor:help;opacity:.6">(why?)</span>`;
+    }
     const sourceBadge =
-      `<div style="font-size:10px;opacity:.6;display:block;margin-top:4px">🔥 Firebase Genkit · ${d.model || 'Gemini'}</div>`;
+      `<div style="font-size:10px;opacity:.6;display:block;margin-top:4px">${orchestratorIcon} ${escHtml(orchestratorLabel)} \u00B7 ${escHtml(d.model || 'unknown')}${diag}</div>`;
     const citations = ecoRenderCitations(d.citations || []);
+    const placeChips = _ecoBuildPlaceChips(d.place_results || []);
 
     if (typing) typing.outerHTML =
-      `<div class="chat-msg ai">${escHtml(d.reply || 'No reply')}${citations}${toolsUsed}${sourceBadge}</div>`;
+      `<div class="chat-msg ai">${escHtml(d.reply || 'No reply')}${citations}${toolsUsed}${sourceBadge}${placeChips}</div>`;
   } catch(e) {
     const typing = document.getElementById('chatTyping');
     if (typing) typing.outerHTML = `<div class="chat-msg ai">Sorry, couldn't reach the server. Please try again.</div>`;
   }
   msgs.scrollTop = msgs.scrollHeight;
 }
-
 function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function _ecoBuildPlaceChips(places) {
+  if (!places || places.length === 0) return '';
+  const items = places.map((p) => {
+    const dist = p.distance_km != null ? `${p.distance_km} km · ` : '';
+    const safeName = escHtml(p.name || 'Place');
+    const safeCat = escHtml(p.category || '');
+    const safeLat = Number(p.lat);
+    const safeLon = Number(p.lon);
+    if (!Number.isFinite(safeLat) || !Number.isFinite(safeLon)) return '';
+    return `
+      <div class="place-chip" onclick="_ecoGoToPlace(${safeLat},${safeLon},${JSON.stringify(p.name || 'Destination')})">
+        <div class="place-chip-info">
+          <span class="place-chip-name">${safeName}</span>
+          <span class="place-chip-meta">${dist}${safeCat}</span>
+        </div>
+        <button class="place-chip-go">Let's go →</button>
+      </div>`;
+  }).join('');
+  return items ? `<div class="place-chips">${items}</div>` : '';
+}
+
+function _ecoGoToPlace(lat, lon, name) {
+  if (typeof USER === 'undefined') {}
+  C.e = { lat: parseFloat(lat), lon: parseFloat(lon), name: name || 'Destination' };
+  document.getElementById('iEnd').value = C.e.name;
+  document.getElementById('clrE')?.classList.add('vis');
+  try { drawDraftMarker('e', C.e); } catch(e) { console.warn('end pin failed', e); }
+
+  if (ecoUserPos && ecoUserPos.lat) {
+    C.s = { lat: ecoUserPos.lat, lon: ecoUserPos.lon, name: 'Current location' };
+    document.getElementById('iStart').value = C.s.name;
+    document.getElementById('clrS')?.classList.add('vis');
+    try { drawDraftMarker('s', C.s); } catch(e) { console.warn('start pin failed', e); }
+  }
+  try { map.flyTo([C.e.lat, C.e.lon], 15, { duration: 0.8 }); } catch(e) {}
+  if (C.s && C.e) {
+    openPanel();
+    step('mode');
+  } else {
+    document.getElementById('iStart').focus();
+    openPanel();
+    step('search');
+  }
+}
 
 /* ═══════════════════════════════════════════════════════
    FREE APIs — Open-Meteo weather + air quality (no key)
@@ -6457,12 +7617,15 @@ async function loadWeatherChip() {
   const outdoor = ['Cycling','Walking','Motorcycle'].includes(J.mode);
   if (raining && outdoor && c.precipitation > 0.3) {
     const pb = document.querySelector('#variantList');
-    if (pb && !document.getElementById('wxTip')) {
-      const tip = document.createElement('div');
-      tip.id = 'wxTip';
-      tip.style.cssText = 'background:var(--orange-bg);border:1px solid rgba(245,158,11,.3);border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:12px;color:var(--orange);line-height:1.5';
-      tip.innerHTML = `${emoji} It's raining (${c.precipitation.toFixed(1)} mm/hr). Consider Drive / MRT / Grab — ${J.mode.toLowerCase()} may be uncomfortable.`;
-      pb.parentNode.insertBefore(tip, pb);
+    if (pb) {
+      let tip = document.getElementById('wxTip');
+      if (!tip) {
+        tip = document.createElement('div');
+        tip.id = 'wxTip';
+      }
+      tip.style.cssText = 'background:var(--orange-bg);border:1px solid rgba(245,158,11,.3);border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:12px;color:var(--orange);line-height:1.5;display:block';
+      tip.innerHTML = `${emoji} It's raining (${c.precipitation.toFixed(1)} mm/hr). Consider Drive / MRT / Grab ? ${J.mode.toLowerCase()} may be uncomfortable.`;
+      if (tip.parentNode !== pb.parentNode || tip.nextSibling !== pb) pb.parentNode.insertBefore(tip, pb);
     }
   }
 }
@@ -6801,44 +7964,86 @@ map.on("click", async function(e) {
 
   poiPopup = L.popup({className:"poi-popup", maxWidth:260, closeButton:true})
     .setLatLng(e.latlng)
-    .setContent(`<div class="pp-loading">Looking up location…</div>`)
+    .setContent(`<div class="pp-loading">Looking up location...</div>`)
     .openOn(map);
 
+  const isPlanner = (typeof ECO_MODE !== 'undefined' && ECO_MODE === 'planner');
+
+  // Properly escape a string for embedding inside a JS string literal that
+  // lives inside an HTML attribute. The previous code used `replace(/'/g, "\'")`
+  // which is a no-op (the `\'` inside double quotes is just `'`), so names
+  // containing apostrophes (e.g. "Joe's Cafe") silently broke every onclick.
+  function escJsAttr(s) {
+    return String(s == null ? '' : s)
+      .replace(/\\/g, '\\\\')
+      .replace(/'/g, "\\'")
+      .replace(/"/g, '&quot;')
+      .replace(/</g, '\\u003C');
+  }
+
+  // Helper to build the middle button(s)
+  function buildMidBtns(safeLat, safeLng, safeN) {
+    if (isPlanner) {
+      // Planner mode: the middle button is "Set as Other point". The rule
+      // (Set Start must be pressed first) is enforced inside ecoMapSetOtherPoint.
+      return `
+        <button class="pp-btn pp-w"
+          style="background:rgba(245,158,11,.12);color:var(--orange);border:1px solid rgba(245,158,11,.3)"
+          onclick="ecoMapSetOtherPoint(${safeLat},${safeLng},'${safeN}')">
+          Set as Other point
+        </button>`;
+    }
+    return `
+      <button class="pp-btn pp-e" onclick="setPOI(${safeLat},${safeLng},'${safeN}','end')">Set Destination</button>
+      <button class="pp-btn pp-w"
+        style="background:rgba(245,158,11,.1);color:var(--orange);border:1px solid rgba(245,158,11,.25)"
+        onclick="addPOIAsStop(${safeLat},${safeLng},'${safeN}')">Add as Stop</button>`;
+  }
+
+  // In planner mode the "Set Start" button should bind the cyan Start pin to
+  // the tapped coordinate (slot 0 of plannerPoints) instead of going through
+  // the citizen routing flow (which writes to iStart/C.s and shows a
+  // "tap destination" toast). This is what the user expects: pressing
+  // Set Start moves the cyan "you" marker; pressing Set as Other point
+  // creates an orange marker.
+  function buildStartBtn(safeLat, safeLng, safeN) {
+    if (isPlanner) {
+      return `<button class="pp-btn pp-s"
+        onclick="ecoMapSetStart(${safeLat},${safeLng},'${safeN}')">Set Start</button>`;
+    }
+    return `<button class="pp-btn pp-s"
+      onclick="setPOI(${safeLat},${safeLng},'${safeN}','start')">Set Start</button>`;
+  }
+
   try {
-    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=en`, {headers:{"User-Agent":"EcoFlow/4.0"}});
+    // Use our proxy (avoids direct-from-browser Nominatim 403/rate-limit)
+    const r = await fetch(`${API}/api/v1/planner/reverse-geocode?lat=${lat}&lon=${lng}`);
     const d = await r.json();
     const name = d.name || d.address?.road || d.address?.suburb || "This location";
     const addr = [d.address?.road, d.address?.suburb, d.address?.city].filter(Boolean).join(", ");
-    
-    // CRITICAL FIX: Properly escape single quotes for the inline onclick handler
-    const safeN = name.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+
+    const safeN   = escJsAttr(name);
     const safeLat = lat.toFixed(6);
     const safeLng = lng.toFixed(6);
     const poiPlace = {name, lat, lon: lng, addr};
-    const favOn = isFavorite(poiPlace);
-    const safeAddr = (addr || '').replace(/'/g, "\\'");
-    
+    const favOn    = ecoFavoritesEnabled() && isFavorite(poiPlace);
+    const safeAddr = escJsAttr(addr || '');
+    const favButton = ecoFavoritesEnabled() ? `
+          <button class="pp-btn pp-fav"
+            style="background:${favOn?'rgba(245,158,11,.15)':'var(--card)'};color:var(--orange);border:1px solid ${favOn?'rgba(245,158,11,.3)':'var(--border)'}"
+            onclick="togglePOIFav(${safeLat},${safeLng},'${safeN}','${safeAddr}')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="${favOn?'currentColor':'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            ${favOn ? 'Saved' : 'Save to Favourites'}
+          </button>` : '';
+
     poiPopup.setContent(`
       <div class="pp-wrap">
         <div class="pp-name">${escHtml(name)}</div>
         <div class="pp-addr">${escHtml(addr || 'Map location')}</div>
         <div class="pp-btns">
-          <button class="pp-btn pp-s" onclick="setPOI(${safeLat},${safeLng},'${safeN}','start')">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>
-            Set Start
-          </button>
-          <button class="pp-btn pp-e" onclick="setPOI(${safeLat},${safeLng},'${safeN}','end')">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-            Set Destination
-          </button>
-          <button class="pp-btn pp-w" style="background:rgba(245,158,11,.1);color:var(--orange);border:1px solid rgba(245,158,11,.25)" onclick="addPOIAsStop(${safeLat},${safeLng},'${safeN}')">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Add as Stop
-          </button>
-          <button class="pp-btn pp-fav" style="background:${favOn?'rgba(245,158,11,.15)':'var(--card)'};color:var(--orange);border:1px solid ${favOn?'rgba(245,158,11,.3)':'var(--border)'}" onclick="togglePOIFav(${safeLat},${safeLng},'${safeN}','${safeAddr}')">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="${favOn?'currentColor':'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-            ${favOn ? 'Saved ⭐' : 'Save to Favourites'}
-          </button>
+          ${buildStartBtn(safeLat, safeLng, safeN)}
+          ${buildMidBtns(safeLat, safeLng, safeN)}
+          ${favButton}
         </div>
       </div>`);
   } catch(err) {
@@ -6847,9 +8052,8 @@ map.on("click", async function(e) {
       <div class="pp-wrap">
         <div class="pp-name">Selected Location</div>
         <div class="pp-btns">
-          <button class="pp-btn pp-s" onclick="setPOI(${safeLat},${safeLng},'Selected location','start')">Set Start</button>
-          <button class="pp-btn pp-e" onclick="setPOI(${safeLat},${safeLng},'Selected location','end')">Set Destination</button>
-          <button class="pp-btn pp-w" style="background:rgba(245,158,11,.1);color:var(--orange);border:1px solid rgba(245,158,11,.25)" onclick="addPOIAsStop(${safeLat},${safeLng},'Selected location')">Add as Stop</button>
+          ${buildStartBtn(safeLat, safeLng, 'Selected location')}
+          ${buildMidBtns(safeLat, safeLng, 'Selected location')}
         </div>
       </div>`);
   }
@@ -6887,27 +8091,39 @@ function togglePOIFav(lat, lng, name, addr) {
     btn.style.borderColor = nowFav ? 'rgba(245,158,11,.3)' : 'var(--border)';
     const starSvg = btn.querySelector('svg');
     if (starSvg) starSvg.setAttribute('fill', nowFav ? 'currentColor' : 'none');
-    const svgHtml = btn.querySelector('svg').outerHTML;
+    const svgHtml = starSvg ? starSvg.outerHTML : '';
     btn.innerHTML = svgHtml + (nowFav ? ' Saved ⭐' : ' Save to Favourites');
   }
 }
 
 function setPOI(lat, lng, name, role) {
-  map.closePopup(poiPopup);
+  if (poiPopup) map.closePopup(poiPopup);
   const place = {name, lat: parseFloat(lat), lon: parseFloat(lng)};
+
   if (role === "start") {
     C.s = place;
     document.getElementById("iStart").value = name;
     document.getElementById("clrS").classList.add("vis");
+    // Sync to Planner panel (cyan "you" marker moves here)
+    if (typeof ecoSetPlannerLocation === 'function') {
+      ecoSetPlannerLocation(place.lat, place.lon, place.name, 0);
+    }
   } else {
     C.e = place;
     document.getElementById("iEnd").value = name;
     document.getElementById("clrE").classList.add("vis");
   }
-  if (C.s && C.e) { openPanel(); step('mode'); }
-  else {
+
+  // Draw the on-map marker so the click feels "alive"
+  try { drawDraftMarker(role === 'start' ? 's' : 'e', place); } catch(e) {}
+
+  if (C.s && C.e) {
+    openPanel();
+    if (typeof J !== 'undefined' && J.mode) { getRoute(); } else { step('mode'); }
+  } else {
     const other = role === "start" ? "iEnd" : "iStart";
-    document.getElementById(other).focus();
+    const otherEl = document.getElementById(other);
+    if (otherEl) otherEl.focus();
     showToast(role === "start" ? "Start set! Now tap destination." : "Destination set! Now tap start.");
   }
 }
@@ -6998,6 +8214,28 @@ function ecoSyncMobileTab(tab) {
 
 // ─── Citizen / Planner mode toggle ───
 let ECO_MODE = 'citizen';   // 'citizen' | 'planner'
+let _ecoHeatLayer = null;
+
+async function ecoRefreshPlannerHeatmap() {
+  if (ECO_MODE !== 'planner' || !map) return;
+  const b = map.getBounds();
+  try {
+    const r = await fetch(`${API}/api/v1/planner/heatmap`, {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        sw_lat: b.getSouthWest().lat, sw_lon: b.getSouthWest().lng,
+        ne_lat: b.getNorthEast().lat, ne_lon: b.getNorthEast().lng,
+        grid_size_deg: 0.005,
+      }),
+    });
+    const d = await r.json();
+    const pts = (d.cells || []).map(c => [c.lat, c.lon, Math.min(1, c.intensity / 20)]);
+    if (_ecoHeatLayer) { map.removeLayer(_ecoHeatLayer); _ecoHeatLayer = null; }
+    if (pts.length && window.L && L.heatLayer) {
+      _ecoHeatLayer = L.heatLayer(pts, { radius: 25, blur: 18, maxZoom: 17 }).addTo(map);
+    }
+  } catch (e) { console.warn('heatmap fetch failed', e); }
+}
 
 function ecoSwitchMode(mode) {
   ECO_MODE = mode;
@@ -7005,23 +8243,184 @@ function ecoSwitchMode(mode) {
   document.getElementById('mtCitizen').classList.toggle('active', mode === 'citizen');
   document.getElementById('mtPlanner').classList.toggle('active', mode === 'planner');
 
+  // Slide planner panel in/out with the same animation other side panels use.
+  const _plannerPanelEl = document.getElementById('plannerPanel');
+  if (_plannerPanelEl) {
+    if (mode === 'planner') {
+      // Force reflow before adding .open so transition runs from translateX(-120%).
+      _plannerPanelEl.classList.remove('open');
+      // eslint-disable-next-line no-unused-expressions
+      _plannerPanelEl.offsetWidth;
+      requestAnimationFrame(() => _plannerPanelEl.classList.add('open'));
+    } else {
+      _plannerPanelEl.classList.remove('open');
+    }
+  }
+
+  if (window.map && window._ecoPlannerClick) {
+    map.off('click', window._ecoPlannerClick);
+    window._ecoPlannerClick = null;
+  }
+
   if (mode === 'planner') {
-    // Hide today card in planner mode
     const t = document.getElementById('todayCard');
     if (t) t.classList.remove('show');
-    // Wire map clicks → planner lat/lon inputs (one-off)
-    if (window.map && !window._ecoPlannerHooked) {
-      window.map.on('click', (e) => {
-        if (ECO_MODE !== 'planner') return;
-        document.getElementById('ppLat').value = e.latlng.lat.toFixed(5);
-        document.getElementById('ppLon').value = e.latlng.lng.toFixed(5);
-      });
-      window._ecoPlannerHooked = true;
+    if (window.map) {
+      window._ecoPlannerClick = (e) => {
+        ecoSetPlannerLocation(e.latlng.lat, e.latlng.lng, "Selected on Map", _activePlannerSearchIdx);
+      };
+      map.on('click', window._ecoPlannerClick);
     }
+    ecoRefreshPlannerHeatmap();
     ecoShowDemoToast('Tap anywhere on the map to set the analysis point');
   } else {
-    // Restore today card
     ecoLoadTodaySchedule();
+    if (_ecoHeatLayer) { map.removeLayer(_ecoHeatLayer); _ecoHeatLayer = null; }
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+// ─── Today's Schedule card ───
+let _ecoClockStarted = false;
+
+function ecoMalaysiaNow() {
+  const now = new Date();
+  const myOffsetMin = 8 * 60 + now.getTimezoneOffset();
+  return new Date(now.getTime() + myOffsetMin * 60000);
+}
+
+function _ecoFriendlyTimeLabel(secs) {
+  if (secs === null || secs === undefined || Number.isNaN(Number(secs))) return '';
+  const s = Number(secs);
+  if (s <= -60) return `${Math.floor(-s / 60)} min late`;
+  if (s < 0) return 'leave now';
+  if (s < 60) return 'leaving now';
+  if (s < 3600) return `in ${Math.floor(s / 60)} min`;
+  return `in ${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m`;
+}
+
+function ecoTickClock() {
+  const myNow = ecoMalaysiaNow();
+  const tcTime = document.getElementById('tcTime');
+  if (tcTime) {
+    tcTime.textContent = myNow.toTimeString().slice(0, 8);
+  }
+
+  document.querySelectorAll('#tcRows .tc-row[data-depart]').forEach(row => {
+    const depart = row.dataset.depart || '';
+    const minsEl = row.querySelector('.tc-mins');
+    if (!minsEl || !/^\d{2}:\d{2}$/.test(depart)) return;
+
+    const [hh, mm] = depart.split(':').map(Number);
+    const target = new Date(myNow);
+    target.setHours(hh, mm, 0, 0);
+    const secs = Math.floor((target.getTime() - myNow.getTime()) / 1000);
+    const mins = Math.floor(secs / 60);
+
+    if (mins < 0 && Math.abs(mins) > 120) {
+      row.style.display = 'none';
+      return;
+    }
+    row.style.display = '';
+    minsEl.classList.toggle('urgent', mins >= -2 && mins <= 60);
+    minsEl.textContent = _ecoFriendlyTimeLabel(secs);
+  });
+}
+
+function _ecoStartClock() {
+  if (window._ecoClockStarted) return;
+  window._ecoClockStarted = true;
+  ecoTickClock();
+  const msToNextSecond = 1000 - (Date.now() % 1000);
+  setTimeout(() => {
+    ecoTickClock();
+    setInterval(ecoTickClock, 1000);
+  }, msToNextSecond);
+}
+
+
+
+function _ecoUpdateProactiveToastAnchor() {
+  const card = document.getElementById('todayCard');
+  if (!card) return;
+  const r = card.getBoundingClientRect();
+  document.documentElement.style.setProperty('--pt-top', Math.round(r.bottom) + 'px');
+}
+
+// ─── Proactive Agent: poll for notifications ───
+
+
+
+
+function _ecoPlayNotifChime() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const gain = ctx.createGain();
+    gain.connect(ctx.destination);
+    [[660, 0], [880, 0.18]].forEach(([freq, delay]) => {
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      osc.connect(gain);
+      gain.gain.setValueAtTime(0, ctx.currentTime + delay);
+      gain.gain.linearRampToValueAtTime(0.08, ctx.currentTime + delay + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.35);
+      osc.start(ctx.currentTime + delay);
+      osc.stop(ctx.currentTime + delay + 0.35);
+    });
+  } catch(e) {}
+}
+
+
+// ─── Planner Mode: site analysis ───
+
+function ecoSelectPlannerView(viewId) {
+  // 1. 切换卡片的高亮状态
+  document.getElementById('ppView').value = viewId;
+  document.querySelectorAll('.pv-card').forEach(c => c.classList.remove('active'));
+  document.getElementById('pv-' + viewId).classList.add('active');
+
+  // 2. 获取标签和下拉菜单的 DOM
+  const label = document.getElementById('ppTypeLabel');
+  const select = document.getElementById('ppType');
+  if (!label || !select) return;
+
+  // 3. 根据视角动态替换选项（使用简单、直白的英文）
+  if (viewId === 'merchant') {
+    label.textContent = "Target Business to Open";
+    select.innerHTML = `
+      <option value="cafe">Cafe / Coffee Shop</option>
+      <option value="mamak">Mamak / Restaurant</option>
+      <option value="laundry">Laundry Shop (Dobi)</option>
+      <option value="parcel">Parcel Drop-off</option>
+    `;
+  } else if (viewId === 'resident') {
+    label.textContent = "Missing Essential Amenity";
+    select.innerHTML = `
+      <option value="clinic">Clinic</option>
+      <option value="pasar">Wet Market (Pasar)</option>
+      <option value="kindergarten">Kindergarten / Daycare</option>
+      <option value="pharmacy">Pharmacy</option>
+      <option value="park">Public Park / Playground</option>
+    `;
+  } else if (viewId === 'developer') {
+    label.textContent = "Proposed Development Type";
+    select.innerHTML = `
+      <option value="condo">High-Rise Condo / Apartment</option>
+      <option value="landed">Landed House Area</option>
+      <option value="mixed">Mixed (Shops & Housing)</option>
+      <option value="office">Office Building</option>
+      <option value="mall">Shopping Mall</option>
+    `;
   }
 }
 
@@ -7053,7 +8452,6 @@ function ecoOnRepeatChange() {
 let ecoSchedFrom = null;   // {lat, lon, name}
 let ecoSchedTo   = null;
 let ecoLpTarget  = null;   // 'from' | 'to'
-let _ecoLpDebounce = null;
 
 function ecoOpenLocPicker(target) {
   ecoLpTarget = target;
@@ -7153,6 +8551,7 @@ function ecoLpUseMapRoute() {
   }
 }
 
+let _ecoLpDebounce = null;
 function ecoLpSearch(q) {
   q = (q || '').trim();
   if (q.length < 2) {
@@ -7295,8 +8694,8 @@ function ecoRenderTodayCard(payload) {
 }
 
 // ─── Proactive Agent: poll for notifications ───
-let _ecoActiveNotif = null;
 
+let _ecoActiveNotif = null;
 async function ecoPollNotifications() {
   if (!USER || !USER.id) return;
   try {
@@ -7358,42 +8757,496 @@ async function ecoAcceptToast() {
   ecoDismissToast();
 }
 
-// ─── Planner Mode: site analysis ───
-async function ecoRunSiteAnalysis() {
-  const lat = parseFloat(document.getElementById('ppLat').value);
-  const lon = parseFloat(document.getElementById('ppLon').value);
-  const radius = parseFloat(document.getElementById('ppRadius').value || '1.0');
-  const business_type = document.getElementById('ppType').value;
-  const view = document.getElementById('ppView').value;
 
-  if (!isFinite(lat) || !isFinite(lon)) {
-    ecoShowDemoToast('Tap the map to set a location, or paste lat/lon.');
+// ─── Planner Mode: 動態多點搜尋、對比與數據可視化引擎 ───
+let plannerPoints = []; // 存儲地點，[0] 永遠是 Start point
+let plannerMarkers = [];
+let _activePlannerSearchIdx = 0; // 存儲大頭針
+
+function ecoUIAddOtherPoint() {
+  // Rule 1: must have a Start point first.
+  if (!plannerPoints[0]) {
+    ecoShowDemoToast("Please set a 'Start point' on the map first.");
     return;
   }
-  const wrap = document.getElementById('ppResultWrap');
-  wrap.style.display = 'block';
-  wrap.innerHTML = '<div style="color:var(--text3); font-size:13px; padding:12px 0;">Analysing site… (Gemini is reasoning over foot-traffic, transit, and policy context)</div>';
+  // Rule 2: maximum 3 points total (1 Start + 2 Other).
+  if (plannerPoints.length >= 3) {
+    ecoShowDemoToast("Maximum 2 'Other points' allowed.");
+    return;
+  }
+  plannerPoints.push(null);
+  syncPlannerSearchUI();
+  return;
+  /* ---- legacy body (unreachable, kept verbatim from previous version) ----
+    // 规则 1：必须先有 Start Point
+    if (!plannerPoints[0]) {
+        ecoShowDemoToast("⚠️ Please set a 'Start point' on the map first.");
+        return;
+    }
+    // 规则 2：限制最多只能有 3 个点 (1 Start + 2 Other)
+    if (plannerPoints.length >= 3) {
+        ecoShowDemoToast("⚠️ Maximum 2 'Other points' allowed.");
+        return;
+    }
+    plannerPoints.push(null);
+    syncPlannerSearchUI();
+  */
+}
+
+//【带删除按钮版】Locations to Analyze 输入框
+function syncPlannerSearchUI() {
+  const container = document.getElementById('ppSearchContainer');
+  if (!container) return;
+  
+  let html = '';
+  const count = Math.max(1, plannerPoints.length);
+  
+  for(let i=0; i<count; i++) {
+      const pt = plannerPoints[i];
+      const ptVal = pt ? pt.name : '';
+      const color = i === 0 ? 'var(--purple)' : 'var(--orange)';
+      const ph = i === 0 ? 'Search Start point...' : `Search Other point ${i}...`;
+      
+      // 如果不是 Start point (i > 0)，就加一个红色的删除按钮
+      let deleteBtn = '';
+      if (i > 0) {
+          deleteBtn = `<button type="button" onclick="ecoDeletePlannerPoint(${i})" style="padding:9px 12px; border-radius:8px; background:rgba(239,68,68,0.1); border:1px solid #EF4444; color:#EF4444; font-weight:bold; cursor:pointer; transition: 0.2s;" onmouseover="this.style.background='#EF4444'; this.style.color='#fff';" onmouseout="this.style.background='rgba(239,68,68,0.1)'; this.style.color='#EF4444';" title="Delete this point">✕</button>`;
+      }
+      
+      html += `
+      <div style="display:flex; gap:6px; margin-bottom:8px; align-items:center;">
+          <div style="width:12px;height:12px;border-radius:50%;background:${color};flex-shrink:0;box-shadow:0 0 8px ${color}"></div>
+          <input type="text" id="ppSearch_${i}" value="${escHtml(ptVal)}" placeholder="${ph}" style="flex:1; padding:9px 11px; background:var(--card); border:1px solid var(--border); border-radius:10px; color:var(--text); font-size:13px;" oninput="ecoPlannerSearchInput(this.value, ${i})" autocomplete="off"/>
+          ${i === 0 ? `<button type="button" onclick="ecoSearchPlannerLoc(${i})" style="padding:10px 14px; border-radius:10px; background:var(--accent); border:none; color:#000; font-weight:700; letter-spacing:0.3px; font-size:12px; cursor:pointer;">Search</button>` : `<button type="button" onclick="ecoSearchPlannerLoc(${i})" title="Search this location" style="width:36px; height:36px; flex-shrink:0; padding:0; border-radius:10px; background:var(--accent); border:none; color:#000; cursor:pointer; display:inline-flex; align-items:center; justify-content:center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></button>`}
+          ${deleteBtn}
+      </div>`;
+  }
+  
+  html += `<div id="ppSearchDropdown" style="display:none; position:absolute; top:100%; z-index:2100; background:var(--surface); border:1px solid var(--border); border-radius:12px; max-height:240px; overflow-y:auto; box-shadow:var(--shadow-lg); width:100%;"></div>`;
+  container.innerHTML = html;
+}
+
+function ecoDeletePlannerPoint(index) {
+    if (plannerMarkers[index]) {
+        map.removeLayer(plannerMarkers[index]);
+    }
+    
+    plannerPoints.splice(index, 1);
+    plannerMarkers.splice(index, 1);
+    
+    for (let i = 1; i < plannerPoints.length; i++) {
+        if (plannerPoints[i] && plannerMarkers[i]) {
+            map.removeLayer(plannerMarkers[i]); 
+            plannerMarkers[i] = drawPlannerPin(
+                plannerPoints[i].lat, 
+                plannerPoints[i].lon, 
+                `Other point ${i}`, 
+                "var(--orange)"
+            );
+        }
+    }
+    
+    syncPlannerSearchUI();
+    
+    // 核心修改：不再自动重新生成 AI 报告！
+    // 只有在所有点都被清空（连 Start point 都没有了）时，才清空下方的报告区。
+    if (!plannerPoints[0]) {
+        document.getElementById('ppResultWrap').innerHTML = '';
+    }
+}
+
+// 1. 繪製自帶文字標籤的專屬大頭針 (修复了 map 引用)
+function drawPlannerPin(lat, lon, label, color) {
+  return L.marker([lat, lon], {
+    icon: L.divIcon({
+      html: `<div style="padding:4px 12px; background:${color}; border:2.5px solid white; border-radius:99px; box-shadow:0 4px 14px rgba(0,0,0,0.4); color:#fff; font-weight:800; font-size:11px; white-space:nowrap; position:relative; top:-10px; transform:translate(-50%, -100%);">
+                ${label}
+                <div style="position:absolute; bottom:-6px; left:50%; transform:translateX(-50%); width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent; border-top:6px solid white;"></div>
+             </div>`,
+      className: '', iconAnchor: [0, 0] 
+    }), zIndexOffset: 2000
+  }).addTo(map); // 👈 
+}
+
+function ecoSetPlannerLocation(lat, lon, name = "Selected on Map", index = 0) {
+  while (plannerPoints.length <= index) {
+    plannerPoints.push(null);
+  }
+  plannerPoints[index] = {lat, lon, name};
+
+  // Remove any prior marker at this slot
+  if (plannerMarkers[index]) {
+    map.removeLayer(plannerMarkers[index]);
+    plannerMarkers[index] = null;
+  }
+
+  // Draw a slot-appropriate marker so the user gets visual feedback
+  if (index === 0) {
+    // Start point - cyan/accent pin, label "Start"
+    plannerMarkers[0] = drawPlannerPin(lat, lon, "Start", "var(--accent)");
+  } else {
+    // Other points - orange, labelled by their slot index
+    plannerMarkers[index] = drawPlannerPin(lat, lon, `Other point ${index}`, "var(--orange)");
+  }
+
+  syncPlannerSearchUI();
+
+  // Smoother fly-to than setView; duration short enough not to feel sluggish
+  map.flyTo([lat, lon], 15, {animate: true, duration: 0.6});
+}
+
+// Planner popup: "Set Start" button — bind slot 0 to the tapped coordinate.
+// This moves the cyan "you" / Start marker to the new location without
+// touching the citizen routing flow (which would otherwise write to
+// iStart / C.s and pop a "tap destination" toast).
+function ecoMapSetStart(lat, lon, name) {
+  if (poiPopup) map.closePopup(poiPopup);
+  ecoSetPlannerLocation(parseFloat(lat), parseFloat(lon), name || "Start point", 0);
+  if (typeof showToast === 'function') showToast("Start point set. Tap the map to add Other points.");
+}
+
+// Map popup: "Set as Other point" — only valid after a Start has been set.
+function ecoMapSetOtherPoint(lat, lon, name) {
+  return ecoMapSetOtherPointImpl(lat, lon, name);
+}
+function ecoMapSetOtherPointImpl(lat, lon, name) {
+  // Rule 1: must have a Start point (slot 0) before adding Other points.
+  if (!plannerPoints[0]) {
+    ecoShowDemoToast("Please 'Set Start' first.");
+    if (poiPopup) map.closePopup(poiPopup);
+    return;
+  }
+  if (poiPopup) map.closePopup(poiPopup);
+
+  // Find the next empty slot.
+  let nextIdx = plannerPoints.length;
+  if (plannerPoints.length > 0 && plannerPoints[plannerPoints.length - 1] === null) {
+    nextIdx = plannerPoints.length - 1;
+  }
+
+  // Rule 2: maximum 2 Other points (3 total).
+  if (nextIdx > 2) {
+    ecoShowDemoToast("Maximum 2 'Other points' allowed.");
+    return;
+  }
+
+  ecoSetPlannerLocation(lat, lon, name, nextIdx);
+  return;
+  /* ---- legacy body (unreachable, kept verbatim from previous version) ----
+  // 规则 1：必须先有 Start point (Index 0) 才能添加 Other point
+  if (!plannerPoints[0]) {
+      ecoShowDemoToast("⚠️ Please 'Set Start' first.");
+      if (poiPopup) map.closePopup(poiPopup); // 👈 核心修复：使用 map.closePopup
+      return;
+  }
+  if (poiPopup) map.closePopup(poiPopup); // 👈 核心修复：使用 map.closePopup
+  
+  // 寻找下一个空位
+  let nextIdx = plannerPoints.length;
+  if (plannerPoints.length > 0 && plannerPoints[plannerPoints.length - 1] === null) {
+      nextIdx = plannerPoints.length - 1;
+  }
+  
+  // 规则 2：最多只能加 2 个 Other point (总共 3 个点)
+  if (nextIdx > 2) {
+      ecoShowDemoToast("⚠️ Maximum 2 'Other points' allowed.");
+      return;
+  }
+  
+  ecoSetPlannerLocation(lat, lon, name, nextIdx);
+  */
+}
+
+//【升级版】获取真实的地点建议列表 (OpenStreetMap)
+async function ecoPlannerSearchInput(val, index) {
+  const dropdown = document.getElementById('ppSearchDropdown');
+  
+  // 如果输入太短（少于 3 个字），就隐藏下拉框，不浪费请求
+  if (!val || val.length < 3) {
+    dropdown.style.display = 'none';
+    return;
+  }
+
+  // 先显示一个正在搜索的状态
+  dropdown.innerHTML = '<div style="padding:10px; color:var(--text3); font-size:12px;">Searching locations...</div>';
+  dropdown.style.display = 'block';
 
   try {
-    const r = await fetch(`${API}/api/v1/planner/analyze-site`, {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({
-        lat, lon,
-        radius_km: radius,
-        business_type, view,
-        // user_id makes the backend log this query to the billing usage counter
-        user_id: (USER && USER.id) || null,
-      }),
-    });
-    const d = await r.json();
-    ecoRenderSiteResult(d);
-    // Refresh trial banner & billing view (usage went up by 1)
-    if (ecoAccountType === 'business') ecoRefreshBilling();
-  } catch(e) {
-    wrap.innerHTML = `<div style="color:var(--red);font-size:13px;">Analysis failed: ${e.message}</div>`;
+    // 这里的 fetch 会去真实的地图数据库里找马来西亚 (countrycodes=my) 的地点
+    const res = await fetch(`${API}/api/v1/planner/geocode?q=${encodeURIComponent(val)}&limit=5`);
+    const data = await res.json();
+
+    if (data.length === 0) {
+      dropdown.innerHTML = '<div style="padding:10px; color:var(--text3); font-size:12px;">No results found.</div>';
+      return;
+    }
+
+    // 将找回来的地点渲染成列表
+    dropdown.innerHTML = data.map(loc => {
+      const shortName = loc.display_name.split(',').slice(0, 3).join(',');
+      return `
+        <div class="search-suggest-item" 
+             onclick="ecoSelectSearchSuggestion(${index}, ${loc.lat}, ${loc.lon}, '${shortName.replace(/'/g, "\\'")}')"
+             style="padding:12px; cursor:pointer; font-size:12px; color:var(--text2); border-bottom:1px solid var(--border); transition:0.2s;"
+             onmouseover="this.style.background='var(--card)'; this.style.color='var(--accent)';"
+             onmouseout="this.style.background='transparent'; this.style.color='var(--text2)';">
+          📍 ${loc.display_name}
+        </div>
+      `;
+    }).join('');
+  } catch (e) {
+    dropdown.innerHTML = '<div style="padding:10px; color:#EF4444; font-size:12px;">Network error.</div>';
   }
 }
 
+// 【新增】当用户点击建议列表中的地点时触发
+function ecoSelectSearchSuggestion(index, lat, lon, name) {
+  // 1. 将选中的地点名字填入对应的 Search Bar
+  const input = document.getElementById(`ppSearch_${index}`);
+  if (input) {
+    input.value = name;
+  }
+
+  // 2. 隐藏下拉菜单
+  const dropdown = document.getElementById('ppSearchDropdown');
+  if (dropdown) {
+    dropdown.style.display = 'none';
+  }
+
+  // 3. 调用之前的定位函数 (设置 Start 或 Other point)
+  // 这会自动飞向地图地点，如果是 Other point 则会画橘色标记
+  ecoSetPlannerLocation(lat, lon, name, index);
+}
+
+// 點擊 Search 按鈕直接定位
+async function ecoSearchPlannerLoc(idx) {
+  _activePlannerSearchIdx = idx;
+  const inputEl = document.getElementById(`ppSearch_${idx}`);
+  if(!inputEl || !inputEl.value) return;
+  const original = inputEl.value;
+  inputEl.value = 'Searching...';
+  try {
+    const r = await fetch(`${API}/api/v1/planner/geocode?q=${encodeURIComponent(original)}&limit=1`);
+    const data = await r.json();
+    if (data && data.length > 0) {
+      const shortName = data[0].display_name.split(',')[0];
+      ecoSetPlannerLocation(parseFloat(data[0].lat), parseFloat(data[0].lon), shortName, idx);
+    } else {
+      inputEl.value = 'Not found';
+      setTimeout(() => inputEl.value = original, 2000);
+    }
+  } catch(e) {
+    inputEl.value = 'Error';
+    setTimeout(() => inputEl.value = original, 2000);
+  }
+}
+
+// 點擊外面關閉下拉選單
+document.addEventListener('click', (e) => {
+  const ppWrap = document.getElementById('ppSearchDropdown');
+  if (ppWrap && !ppWrap.contains(e.target) && (!e.target.id || !e.target.id.startsWith('ppSearch_'))) {
+    ppWrap.style.display = 'none';
+  }
+});
+
+// 【旗舰版】提取 AI 结论，并根据不同视角 (View) 渲染针对性的 CSS 柱状图表
+function formatVerdict(narrative, d = {}) {
+  let vStatus = "ANALYSIS COMPLETE";
+  let vReason = "Based on multi-factor AI environmental & traffic logic.";
+  let vColor = "var(--text)";
+  let vBg = "var(--card)";
+  let cleanNarrative = narrative || '';
+
+  // 1. 抓取 AI 结论的第一句话作为摘要
+  const match = cleanNarrative.match(/VERDICT:\s*([A-Za-z\s]+)[*]*[\s.:-]*([^\n]*)\n?([\s\S]*)/i);
+  if (match) {
+    vStatus = match[1].trim().toUpperCase();
+    vReason = match[2].trim().replace(/\*/g, ''); 
+  } else if (cleanNarrative.toUpperCase().includes('RECOMMENDED')) {
+    vStatus = "RECOMMENDED";
+    vReason = cleanNarrative.split('\n')[0].replace(/\*/g, '');
+  }
+
+  // 颜色分类
+  if (vStatus.includes('NOT') || vStatus.includes('POOR')) {
+    vColor = 'var(--red)'; vBg = 'var(--red-bg)';
+  } else if (vStatus.includes('HIGHLY') || vStatus.includes('STRONG')) {
+    vColor = 'var(--accent)'; vBg = 'var(--accent-bg)';
+    vStatus = "HIGHLY RECOMMENDED";
+  } else if (vStatus.includes('RECOMMENDED')) {
+    vColor = 'var(--accent)'; vBg = 'var(--accent-bg)';
+  } else {
+    vColor = 'var(--orange)'; vBg = 'var(--orange-bg)';
+  }
+
+  // 2. 提取后端数据以供图表渲染使用
+  const viewType = d.view || 'merchant'; // 核心：判断当前处于什么模式
+  const ft = (d && d.foot_traffic && d.foot_traffic.trips_near) ? d.foot_traffic.trips_near : 0;
+  const comp = (d && d.competitors && d.competitors.count !== undefined) ? d.competitors.count : 2;
+  const co2 = (d && d.carbon_saving_estimate && d.carbon_saving_estimate.kg_per_month) ? d.carbon_saving_estimate.kg_per_month : 0;
+  const score = d.site_score || 0;
+  const oku = d.oku_accessibility_score || 50;
+  const transitDist = (d.transit && d.transit.distance_km != null) ? d.transit.distance_km : 5;
+
+  let chartHtml = '';
+
+  // 3. 根据不同的 View 模式，生成针对性的三大图表
+  if (viewType === 'resident') {
+    // ----------------------------------------------------
+    // 【模式 2】Residential Gap Analysis (居民区宜居与减排分析)
+    // ----------------------------------------------------
+    const pctCoverage = score; // 15-Minute City Coverage
+    const pctNMT = oku; // Non-Motorized Transport (NMT) Friendliness
+    
+    // [NEW] Amenity Diversity Coefficient (0.00 to 1.00)
+    // 模拟算法：基于站点综合评分与周边商铺密度生成多样性指数
+    const diversityIdx = (Math.min(100, 35 + (comp * 8) + (score * 0.4)) / 100).toFixed(2);
+    const pctDiversity = diversityIdx * 100;
+
+    chartHtml = `
+      <div style="margin-top: 16px; border-top: 1px dashed ${vColor}50; padding-top: 14px;">
+          <div style="font-size:10px; font-weight:800; color:var(--text3); text-transform:uppercase; letter-spacing:1px; margin-bottom:12px;">AI ESG Analytics Graph</div>
+
+          <div style="margin-bottom:12px;">
+              <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:5px; font-weight:600;">
+                  <span style="color:var(--text)">15-Min City Coverage</span>
+                  <span style="color:#60A5FA">${pctCoverage}%</span>
+              </div>
+              <div style="height:6px; background:rgba(255,255,255,0.05); border-radius:3px; overflow:hidden;">
+                  <div style="height:100%; width:${pctCoverage}%; background:linear-gradient(90deg, #1D4ED8, #3B82F6); border-radius:3px;"></div>
+              </div>
+          </div>
+
+          <div style="margin-bottom:12px;">
+              <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:5px; font-weight:600;">
+                  <span style="color:var(--text)">NMT Friendliness</span>
+                  <span style="color:#4ADE80">${oku} / 100</span>
+              </div>
+              <div style="height:6px; background:rgba(255,255,255,0.05); border-radius:3px; overflow:hidden;">
+                  <div style="height:100%; width:${pctNMT}%; background:linear-gradient(90deg, #15803D, #22C55E); border-radius:3px;"></div>
+              </div>
+          </div>
+
+          <div style="margin-bottom:6px;">
+              <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:5px; font-weight:600;">
+                  <span style="color:var(--text)">Amenity Diversity Coefficient</span>
+                  <span style="color:#FBBF24">Index: ${diversityIdx}</span>
+              </div>
+              <div style="height:6px; background:rgba(255,255,255,0.05); border-radius:3px; overflow:hidden;">
+                  <div style="height:100%; width:${pctDiversity}%; background:linear-gradient(90deg, #D97706, #F59E0B); border-radius:3px;"></div>
+              </div>
+          </div>
+      </div>`;
+
+  } else if (viewType === 'developer') {
+
+    // ----------------------------------------------------
+    // 【模式 3】New Build Assessment (新开发区交通与碳排风险评估)
+    // ----------------------------------------------------
+    const tripGen = Math.round(ft * 1.5) + 120; // 模拟新项目建成后激增的车流量
+    const pctTrips = Math.min(100, (tripGen / 1000) * 100);
+    const pctLastMile = Math.max(0, score);
+    const ratio = (score / 100 * 1.5).toFixed(1); // 模拟职住比
+    const pctJobs = Math.min(100, (score / 100 * 1.5) / 2 * 100);
+
+    chartHtml = `
+      <div style="margin-top: 16px; border-top: 1px dashed ${vColor}50; padding-top: 14px;">
+          <div style="font-size:10px; font-weight:800; color:var(--text3); text-transform:uppercase; letter-spacing:1px; margin-bottom:12px;">AI Traffic Risk Graph</div>
+
+          <div style="margin-bottom:12px;">
+              <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:5px; font-weight:600;">
+                  <span style="color:var(--text)">Trip Generation (Peak)</span>
+                  <span style="color:#EF4444">+${tripGen} veh/hr</span>
+              </div>
+              <div style="height:6px; background:rgba(255,255,255,0.05); border-radius:3px; overflow:hidden;">
+                  <div style="height:100%; width:${pctTrips}%; background:linear-gradient(90deg, #B91C1C, #EF4444); border-radius:3px;"></div>
+              </div>
+          </div>
+
+          <div style="margin-bottom:12px;">
+              <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:5px; font-weight:600;">
+                  <span style="color:var(--text)">Last-Mile Connectivity</span>
+                  <span style="color:#60A5FA">Index: ${pctLastMile}</span>
+              </div>
+              <div style="height:6px; background:rgba(255,255,255,0.05); border-radius:3px; overflow:hidden;">
+                  <div style="height:100%; width:${pctLastMile}%; background:linear-gradient(90deg, #1D4ED8, #3B82F6); border-radius:3px;"></div>
+              </div>
+          </div>
+
+          <div style="margin-bottom:6px;">
+              <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:5px; font-weight:600;">
+                  <span style="color:var(--text)">Jobs-to-Housing Balance</span>
+                  <span style="color:#FBBF24">Ratio: ${ratio}</span>
+              </div>
+              <div style="height:6px; background:rgba(255,255,255,0.05); border-radius:3px; overflow:hidden;">
+                  <div style="height:100%; width:${pctJobs}%; background:linear-gradient(90deg, #D97706, #F59E0B); border-radius:3px;"></div>
+              </div>
+          </div>
+      </div>`;
+
+  } else {
+    // ----------------------------------------------------
+    // 【模式 1】Merchant Site Selection (原版商家选址缺口分析)
+    // ----------------------------------------------------
+    const pctDemand = Math.min(100, (ft / 500) * 100); 
+    const pctGap = Math.max(0, 100 - (comp * 10)); 
+    const pctEco = Math.min(100, (co2 / 50) * 100);
+
+    chartHtml = `
+      <div style="margin-top: 16px; border-top: 1px dashed ${vColor}50; padding-top: 14px;">
+          <div style="font-size:10px; font-weight:800; color:var(--text3); text-transform:uppercase; letter-spacing:1px; margin-bottom:12px;">AI Analytics Graph</div>
+
+          <div style="margin-bottom:12px;">
+              <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:5px; font-weight:600;">
+                  <span style="color:var(--text)">Service Gap Opportunity</span>
+                  <span style="color:#60A5FA">${comp} nearby competitors</span>
+              </div>
+              <div style="height:6px; background:rgba(255,255,255,0.05); border-radius:3px; overflow:hidden;">
+                  <div style="height:100%; width:${pctGap}%; background:linear-gradient(90deg, #1D4ED8, #3B82F6); border-radius:3px;"></div>
+              </div>
+          </div>
+
+          <div style="margin-bottom:12px;">
+              <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:5px; font-weight:600;">
+                  <span style="color:var(--text)">Local Demand Capture</span>
+                  <span style="color:#FBBF24">${ft} potential trips</span>
+              </div>
+              <div style="height:6px; background:rgba(255,255,255,0.05); border-radius:3px; overflow:hidden;">
+                  <div style="height:100%; width:${pctDemand}%; background:linear-gradient(90deg, #D97706, #F59E0B); border-radius:3px;"></div>
+              </div>
+          </div>
+
+          <div style="margin-bottom:6px;">
+              <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:5px; font-weight:600;">
+                  <span style="color:var(--text)">Commute Carbon Avoided</span>
+                  <span style="color:#4ADE80">${co2} kg CO₂ / mo</span>
+              </div>
+              <div style="height:6px; background:rgba(255,255,255,0.05); border-radius:3px; overflow:hidden;">
+                  <div style="height:100%; width:${pctEco}%; background:linear-gradient(90deg, #15803D, #22C55E); border-radius:3px;"></div>
+              </div>
+          </div>
+      </div>`;
+  }
+
+  // 4. 组合最终卡片并输出
+  const html = `
+  <div style="background: ${vBg}; border: 1.5px solid ${vColor}; border-radius: 12px; padding: 14px; margin: 12px 0; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+      <div style="display:flex; align-items:center; gap: 8px; margin-bottom: 10px;">
+          <div style="background:${vColor}; color:#000; padding: 4px 8px; border-radius: 6px; font-weight: 900; font-size: 11px; letter-spacing: 0.5px; box-shadow: 0 2px 6px ${vColor}60;">
+              ${vStatus}
+          </div>
+          <div style="font-size:10px; font-weight:800; color:${vColor}; text-transform:uppercase; letter-spacing:1px;">AI Verdict</div>
+      </div>
+      <div style="font-size: 12px; color: var(--text); font-weight: 500; line-height: 1.5;">
+          ${vReason}
+      </div>
+      ${chartHtml}
+  </div>`;
+  
+  return { html, cleanNarrative: "" };
+}
+
+// 【单点分析渲染器】保留 4 个基础客观数据，底部接入 AI 动态图表
 function ecoRenderSiteResult(d) {
   const wrap = document.getElementById('ppResultWrap');
   const score = d.site_score || 0;
@@ -7402,42 +9255,417 @@ function ecoRenderSiteResult(d) {
   const tr = d.transit || {};
   const carbon = d.carbon_saving_estimate || {};
 
+  // ✨ 传入完整数据 'd'，让内部的 formatVerdict 自动根据 view 切换三大进度条 ✨
+  const { html: verdictHtml, cleanNarrative } = formatVerdict(d.narrative || '', d);
+
   wrap.innerHTML = `
     <div class="pp-score">
       <div class="pp-score-num ${scoreCls}">${score}</div>
       <div class="pp-score-meta">
-        <div class="lbl">Site Score</div>
-        <div class="val">${d.business_type || ''} · ${d.view || ''}</div>
+        <div class="lbl" style="font-size:10px; letter-spacing:1px; color:var(--text3);">Site Score</div>
+        <div class="val" style="font-size:18px; font-weight:700; color:var(--text);">${d.business_type || ''} · ${d.view || ''}</div>
       </div>
     </div>
-    <div class="pp-stats">
-      <div class="pp-stat">
-        <div class="lbl">Foot Traffic</div>
-        <div class="val">${ft.trips_near || 0} <span style="font-size:10px;color:var(--text3)">trips</span></div>
-        <div class="sub">${ft.k_anon_satisfied ? `${ft.distinct_users} unique users` : 'k-anon: suppressed'}</div>
+    
+    <!-- 顶部的 4 个客观基础数据 (不随视角改变) -->
+    <div class="pp-stats" style="grid-template-columns:1fr 1fr; gap:8px;">
+      <div class="pp-stat" style="padding:12px; border-radius:10px;">
+        <div class="lbl" style="font-size:10px; letter-spacing:1px; color:var(--text3);">Foot Traffic</div>
+        <div class="val" style="font-size:18px; font-weight:700; color:var(--text);">${ft.trips_near || 0} <span style="font-size:10px;color:var(--text3)">trips</span></div>
       </div>
-      <div class="pp-stat">
-        <div class="lbl">Transit</div>
-        <div class="val">${tr.station || '—'}</div>
-        <div class="sub">${tr.distance_km != null ? tr.distance_km + ' km' : 'unknown'} ${tr.walkable ? '· walkable' : ''}</div>
+      <div class="pp-stat" style="padding:12px; border-radius:10px;">
+        <div class="lbl" style="font-size:10px; letter-spacing:1px; color:var(--text3);">Transit</div>
+        <div class="val" style="font-size:18px; font-weight:700; color:var(--text);">${tr.station || '—'}</div>
+        <div class="sub">${tr.distance_km != null ? tr.distance_km + ' km' : 'unknown'}</div>
       </div>
-      <div class="pp-stat">
-        <div class="lbl">Carbon saved / month</div>
-        <div class="val">${carbon.kg_per_month != null ? carbon.kg_per_month + ' kg' : '—'}</div>
-        <div class="sub">${carbon.trees_per_year != null ? carbon.trees_per_year + ' trees / year' : ''}</div>
+      <div class="pp-stat" style="padding:12px; border-radius:10px;">
+        <div class="lbl" style="font-size:10px; letter-spacing:1px; color:var(--text3);">CO₂ saved/mo</div>
+        <div class="val" style="font-size:18px; font-weight:700; color:var(--text);">${carbon.kg_per_month != null ? carbon.kg_per_month + ' kg' : '—'}</div>
       </div>
-      <div class="pp-stat">
-        <div class="lbl">OKU score</div>
-        <div class="val">${d.oku_accessibility_score ?? '—'} / 100</div>
-        <div class="sub">accessibility</div>
+      <div class="pp-stat" style="padding:12px; border-radius:10px;">
+        <div class="lbl" style="font-size:10px; letter-spacing:1px; color:var(--text3);">OKU score</div>
+        <div class="val" style="font-size:18px; font-weight:700; color:var(--text);">${d.oku_accessibility_score ?? '—'} / 100</div>
       </div>
     </div>
-    <div class="pp-narrative">${escHtml(d.narrative || '')}</div>
-    ${d.privacy_note ? `<div style="margin-top:8px;font-size:11px;color:var(--text3)">${escHtml(d.privacy_note)}</div>` : ''}
+    
+    <!-- 底部的动态 AI 分析报告与图表 (会随视角改变) -->
+    ${verdictHtml}
+
+    <div class="pp-narrative" style="border:none; padding:0; background:transparent; font-size:12px; color:var(--text2);">${escHtml(cleanNarrative)}</div>
+    ${d.privacy_note ? `<div style="margin-top:8px;font-size:10px;color:var(--text3); border-top:1px dashed var(--border); padding-top:8px;">${escHtml(d.privacy_note)}</div>` : ''}
+
   `;
+
+  // Single-result flow also needs an Accept-and-save CTA.
+  window._lastComparisonResults = [d];
+  window._selectedPlannerCardIdx = 0;
+  if (typeof ecoRenderAcceptBar === 'function') ecoRenderAcceptBar();
+}
+
+function ecoAcceptPlannerSite(lat, lon) {
+  // If the user is in planner mode (business account OR any user actively
+  // using the planner workflow), we DO NOT want to jump out of planner mode
+  // — they just saved a site to their favourites and almost certainly want
+  // to keep comparing more sites. The previous flow used to ecoSwitchMode
+  // ('citizen') and getRoute(), which (a) hid the planner panel and (b)
+  // left the rail Planner button in a state where clicking it didn't bring
+  // the panel back. Stay in planner mode and pan the map to the saved site
+  // so the user gets visual confirmation.
+  const _isBusiness = (typeof ecoAccountType !== 'undefined' && ecoAccountType === 'business');
+  const _isPlannerMode = (typeof ECO_MODE !== 'undefined' && ECO_MODE === 'planner');
+  if (_isBusiness || _isPlannerMode) {
+    try {
+      if (typeof map !== 'undefined' && map && map.flyTo) {
+        map.flyTo([lat, lon], 16, { animate: true, duration: 0.6 });
+      }
+    } catch (_) {}
+    if (typeof showToast === 'function') {
+      showToast('Site saved to Favourites with AI report.');
+    }
+    // Make sure the planner panel itself is still visible & on-screen.
+    // We re-assert the planner-mode body class AND re-trigger the slide-in
+    // animation so the panel is guaranteed to be on-screen after save,
+    // even if some other flow (e.g. a stray closePanel) cleared the state.
+    document.body.classList.add('planner-mode');
+    if (typeof ECO_MODE !== 'undefined') ECO_MODE = 'planner';
+    const _plannerPanelEl = document.getElementById('plannerPanel');
+    if (_plannerPanelEl) {
+      _plannerPanelEl.classList.remove('open');
+      // eslint-disable-next-line no-unused-expressions
+      _plannerPanelEl.offsetWidth;
+      requestAnimationFrame(() => _plannerPanelEl.classList.add('open'));
+    }
+    return;
+  }
+
+  // ── Citizen fallback (legacy path) ────────────────────────────────────
+  // Default start: use the Planner's Start point if set; otherwise fall back to
+  // the user's cached geolocation; otherwise force the user to set start manually.
+  const plannerStart = (typeof plannerPoints !== 'undefined' && plannerPoints[0]) ? plannerPoints[0] : null;
+  const userGeo = (typeof ecoUserPos !== 'undefined' && ecoUserPos) ? ecoUserPos : null;
+  const startPt = plannerStart || (userGeo ? {lat: userGeo.lat, lon: userGeo.lon, name: 'My location'} : null);
+
+  // Ensure J (citizen route state) exists
+  if (typeof window.J === 'undefined' || !window.J) window.J = {};
+  window.J.s = startPt ? {lat: startPt.lat, lon: startPt.lon, name: startPt.name || 'Start'} : null;
+  window.J.e = {lat, lon, name: 'Accepted site'};
+  window.J._autoNavigate = true;
+
+  // Populate the visible input boxes so the user sees what's happening
+  const iStart = document.getElementById('iStart');
+  const iEnd   = document.getElementById('iEnd');
+  if (iStart && window.J.s) iStart.value = window.J.s.name;
+  if (iEnd)                 iEnd.value   = 'Accepted site';
+
+  // Mirror into C (the citizen-mode legacy state object, if present)
+  if (typeof C !== 'undefined') {
+    if (window.J.s) C.s = window.J.s;
+    C.e = window.J.e;
+  }
+
+  // Switch UI mode, then route on the next tick so DOM updates have settled
+  ecoSwitchMode('citizen');
+  if (typeof openPanel === 'function') openPanel();
+
+  setTimeout(() => {
+    if (!window.J.s) {
+      if (typeof showToast === 'function') {
+        showToast("Set your start point first, then tap Go.");
+      }
+      return;
+    }
+    if (typeof getRoute === 'function') getRoute();
+    if (typeof showToast === 'function') {
+      showToast(`Navigating to selected site...`);
+    }
+  }, 120);
+}
+
+// 替换为这段全新的统一引擎
+async function ecoRunSiteAnalysis() {
+    const _vp = plannerPoints.filter(p => p !== null);
+    if (_vp.length === 0) {
+        ecoShowDemoToast('Please set at least one location on the map.');
+        return;
+    }
+    const validPoints = plannerPoints.filter(p => p !== null);
+    
+    if (validPoints.length === 0) {
+        ecoShowDemoToast('⚠️ Please set at least one location on the map.');
+        return;
+    }
+
+    const radius = parseFloat(document.getElementById('ppRadiusSlider')?.value || '1.0');
+    const business_type = document.getElementById('ppType').value;
+    const view = document.getElementById('ppView').value;
+    const wrap = document.getElementById('ppResultWrap');
+    const ppBody = document.querySelector('#plannerPanel .pp-body');
+    
+    // 强制滚动到顶部并显示 Loading
+    if (ppBody) ppBody.scrollTop = 0;
+    wrap.style.display = 'block';
+    ecoShowPlannerReportView();
+    wrap.innerHTML = `
+        <div style="padding:24px 0; text-align:center;">
+            <div class="loading-spinner" style="width:32px;height:32px;margin:0 auto 12px; border-top-color:var(--accent);"></div>
+            <div style="color:var(--text); font-weight:700; font-size:14px; letter-spacing:1px;">AI IS ANALYSING...</div>
+            <div style="color:var(--text3); font-size:11px; margin-top:6px;">Processing mobility & carbon data</div>
+        </div>`;
+
+    try {
+        const reqs = validPoints.map(p => 
+            fetch(`${API}/api/v1/planner/analyze-site`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    lat: p.lat, lon: p.lon, 
+                    radius_km: radius, 
+                    business_type, view, 
+                    user_id: USER?.id
+                })
+            }).then(res => {
+                if (!res.ok) throw new Error("Backend server error");
+                return res.json();
+            })
+        );
+
+        const results = await Promise.all(reqs);
+
+        // Attach the source coords so the Accept flow can navigate later
+        // (the analyze-site response doesn't always echo lat/lon back).
+        results.forEach((r, i) => {
+            if (!r || !validPoints[i]) return;
+            if (r.lat == null) r.lat = validPoints[i].lat;
+            if (r.lon == null) r.lon = validPoints[i].lon;
+            if (!r.name && validPoints[i].name) r.name = validPoints[i].name;
+        });
+
+        if (results.length === 1) {
+            ecoRenderSiteResult(results[0]);
+        } else {
+            ecoRenderComparisonUI(results);
+        }
+        
+        if (typeof ecoAccountType !== 'undefined' && ecoAccountType === 'business') {
+            if (typeof ecoRefreshBilling === 'function') ecoRefreshBilling();
+        }
+
+        // 核心修复：注入结果后，稍微延迟一下，强制触发浏览器滚动条感知
+        setTimeout(() => {
+            if (ppBody) ppBody.scrollBy(0, 1); 
+        }, 300);
+
+    } catch(e) {
+        wrap.innerHTML = `<div style="color:var(--red);padding:15px;background:var(--red-bg);border-radius:10px;font-size:12px;">❌ Error: ${e.message}</div>`;
+    }
+}
+
+// 【横板对比渲染器】AI Report 左右并列展示 (Left: Start, Right: Other)
+
+// 【垂直版对比渲染器】AI Report 恢复上下堆叠排列 (Top: Start, Bottom: Other)
+function ecoRenderComparisonUI(results) {
+  const wrap = document.getElementById('ppResultWrap');
+
+  window._lastComparisonResults = results;
+
+  const maxScore = Math.max(...results.map(r => r.site_score || 0));
+  let defaultIdx = results.findIndex(r => (r.site_score || 0) === maxScore && maxScore > 0);
+  if (defaultIdx < 0) defaultIdx = 0;
+  window._selectedPlannerCardIdx = defaultIdx;
+
+  let cardsHtml = results.map((d, i) => {
+    const isWinner = d.site_score === maxScore && maxScore > 0;
+    const color = i === 0 ? "var(--purple)" : "var(--orange)";
+    const label = i === 0 ? "START POINT" : `OTHER POINT ${i}`;
+    const score = d.site_score || 0;
+    const scoreCls = score >= 70 ? '' : (score >= 40 ? 'mid' : 'bad');
+    const ft = d.foot_traffic || {};
+    const tr = d.transit || {};
+    const carbon = d.carbon_saving_estimate || {};
+    const { html: verdictHtml, cleanNarrative } = formatVerdict(d.narrative || '', d);
+
+    return `
+      <div class="eco-pp-card ${i === defaultIdx ? 'selected' : ''}"
+           data-card-idx="${i}"
+           onclick="ecoSelectPlannerCard(${i})"
+           style="background:var(--surface); border: 2px solid ${i === defaultIdx ? 'var(--accent)' : (isWinner ? color : 'var(--border)')};
+                  border-radius: 16px; padding: 16px; margin-bottom: 18px; position:relative;
+                  cursor:pointer; transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+                  ${i === defaultIdx ? 'transform: scale(1.01); box-shadow: 0 0 0 3px rgba(0, 200, 120, 0.18);' : ''}">
+
+        ${isWinner ? `<div style="position:absolute; top:-12px; left:50%; transform:translateX(-50%); background:${color}; color:#000; font-size:10px; font-weight:900; padding:4px 14px; border-radius:99px; box-shadow:0 4px 10px ${color}60; letter-spacing: 0.5px;">STAR BEST CHOICE</div>` : ''}
+
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <div style="width:14px; height:14px; border-radius:50%; background:${color}; box-shadow:0 0 8px ${color};"></div>
+            <div style="font-size:13px; font-weight:800; color:${color}; letter-spacing:1px; text-transform:uppercase;">${label}</div>
+          </div>
+          <div class="eco-pp-radio" aria-hidden="true"
+               style="width:18px; height:18px; border-radius:50%; border:2px solid ${i === defaultIdx ? 'var(--accent)' : 'var(--border)'}; background:${i === defaultIdx ? 'var(--accent)' : 'transparent'}; flex-shrink:0; transition:all 0.15s; display:flex; align-items:center; justify-content:center;">
+            ${i === defaultIdx ? '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>' : ''}
+          </div>
+        </div>
+
+        <div class="pp-score">
+          <div class="pp-score-num ${scoreCls}">${score}</div>
+          <div class="pp-score-meta">
+            <div class="lbl" style="font-size:10px; letter-spacing:1px; color:var(--text3);">Site Score</div>
+            <div class="val" style="font-size:18px; font-weight:700; color:var(--text);">${d.business_type || ''} . ${d.view || ''}</div>
+          </div>
+        </div>
+
+        <div class="pp-stats" style="grid-template-columns:1fr 1fr; gap:8px;">
+          <div class="pp-stat" style="padding:12px; border-radius:10px;"><div class="lbl" style="font-size:10px; letter-spacing:1px; color:var(--text3);">Foot Traffic</div><div class="val" style="font-size:18px; font-weight:700; color:var(--text);">${ft.trips_near || 0} <span style="font-size:10px;color:var(--text3)">trips</span></div></div>
+          <div class="pp-stat" style="padding:12px; border-radius:10px;"><div class="lbl" style="font-size:10px; letter-spacing:1px; color:var(--text3);">Transit</div><div class="val" style="font-size:18px; font-weight:700; color:var(--text);">${tr.station || '-'} </div><div class="sub">${tr.distance_km != null ? tr.distance_km + ' km' : 'unknown'}</div></div>
+          <div class="pp-stat" style="padding:12px; border-radius:10px;"><div class="lbl" style="font-size:10px; letter-spacing:1px; color:var(--text3);">CO2 saved/mo</div><div class="val" style="font-size:18px; font-weight:700; color:var(--text);">${carbon.kg_per_month != null ? carbon.kg_per_month + ' kg' : '-'}</div></div>
+          <div class="pp-stat" style="padding:12px; border-radius:10px;"><div class="lbl" style="font-size:10px; letter-spacing:1px; color:var(--text3);">OKU score</div><div class="val" style="font-size:18px; font-weight:700; color:var(--text);">${d.oku_accessibility_score ?? '-'} / 100</div></div>
+        </div>
+
+        ${verdictHtml}
+        <div class="pp-narrative" style="border:none; padding:0; background:transparent; font-size:12px; color:var(--text2);">${escHtml(cleanNarrative)}</div>
+        ${d.privacy_note ? `<div style="margin-top:8px;font-size:10px;color:var(--text3); border-top:1px dashed var(--border); padding-top:8px;">${escHtml(d.privacy_note)}</div>` : ''}
+      </div>
+    `;
+  }).join('');
+
+  wrap.innerHTML = `
+    <div style="font-size:13px; font-weight:800; color:var(--text3); margin-bottom:15px; text-transform:uppercase; letter-spacing:1px; border-bottom: 1px solid var(--border); padding-bottom: 8px;">AI Multi-Site Comparison Report</div>
+    <div style="font-size:11px; color:var(--text3); margin-bottom:12px; text-align:center;">Tap a card to select it, then accept the one you want to navigate to.</div>
+    <div>${cardsHtml}</div>
+  `;
+
+  ecoRenderAcceptBar();
+}
+
+// AI Low-Carbon Recommender (unchanged from earlier build)
+async function ecoRunAiRecommend() {
+  const q = (document.getElementById('ppAiQuery').value || '').trim();
+  if (!q) { ecoShowDemoToast('Type what you are looking for first.'); return; }
+  const lat = parseFloat(document.getElementById('ppLat').value);
+  const lon = parseFloat(document.getElementById('ppLon').value);
+  const userLat = isFinite(lat) ? lat : (ecoUserPos && ecoUserPos.lat) || 3.139;
+  const userLon = isFinite(lon) ? lon : (ecoUserPos && ecoUserPos.lon) || 101.6869;
+  const out = document.getElementById('ppAiResult');
+  out.innerHTML = '<span style="color:var(--text3)">Thinking…</span>';
+  try {
+    const r = await fetch(`${API}/api/v1/planner/ai-recommend`, {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        user_query: q, current_lat: userLat, current_lon: userLon,
+        user_id: (USER && USER.id) || null,
+      }),
+    });
+    const d = await r.json();
+    const best = d.best_option;
+    if (!best) { out.innerHTML = '<span style="color:var(--red)">No candidates.</span>'; return; }
+    out.innerHTML = `
+      <div style="padding:10px;border:1px solid var(--border);border-radius:10px;background:var(--card);">
+        <div style="font-weight:600;margin-bottom:4px;">${escHtml(best.name)}</div>
+        <div style="font-size:11px;color:var(--text3);">
+          ${best.distance_km} km · eco score ${best.eco_score}/100 · ${best.carbon_cost_kg} kg CO2
+        </div>
+        <div style="font-size:11px;margin-top:4px;">${escHtml(best.suggestion)}</div>
+      </div>
+      <div style="margin-top:6px;font-size:10px;color:var(--text3)">
+        Intent: ${escHtml(JSON.stringify(d.user_intent || {}))}
+      </div>
+    `;
+  } catch (e) {
+    out.innerHTML = `<span style="color:var(--red)">Failed: ${escHtml(e.message)}</span>`;
+  }
 }
 
 // ─── Demo toast helper ───
+async function ecoRunAIRecommend() {
+  const input = document.getElementById('aiRecInput');
+  const query = (input && input.value || '').trim();
+  if (!query) { if (typeof showToast === 'function') showToast('Please enter what you are looking for'); return; }
+  const hiddenQuery = document.getElementById('ppAiQuery');
+  const resultWrap = document.getElementById('aiRecResult');
+  const result = document.getElementById('ppAiResult');
+  const btn = document.getElementById('aiRecBtn');
+  const loader = document.getElementById('aiRecLoader');
+  if (hiddenQuery) hiddenQuery.value = query;
+  if (btn) btn.disabled = true;
+  if (loader) loader.style.display = 'block';
+  if (resultWrap) resultWrap.style.display = 'none';
+  if (result) result.innerHTML = '';
+  try {
+    let lat = 3.1390, lon = 101.6869;
+    if (ecoUserPos) { lat = ecoUserPos.lat; lon = ecoUserPos.lon; }
+    else if (navigator.geolocation) {
+      try {
+        const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, {timeout:5000}));
+        lat = pos.coords.latitude; lon = pos.coords.longitude; ecoUserPos = {lat, lon};
+      } catch (_geoErr) {}
+    }
+    const res = await fetch(`${API}/api/v1/planner/ai-recommend`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_query: query, current_lat: lat, current_lon: lon, user_id: USER?.id || 'demo' }) });
+    if (!res.ok) throw new Error('API request failed');
+    renderAIRecommendResults(await res.json());
+  } catch (e) {
+    if (result) result.innerHTML = `<div style="color:var(--red);font-size:13px;background:var(--red-bg);padding:10px;border-radius:8px">Failed: ${escHtml(e.message)}</div>`;
+    if (resultWrap) resultWrap.style.display = 'block';
+  } finally {
+    if (btn) btn.disabled = false;
+    if (loader) loader.style.display = 'none';
+  }
+}
+
+function renderAIRecommendResults(data) {
+  const resultWrap = document.getElementById('aiRecResult');
+  const resDiv = document.getElementById('ppAiResult') || resultWrap;
+  if (!resDiv) return;
+  if (!data || !data.best_option) {
+    resDiv.innerHTML = '<div class="empty-state"><div class="es-title">No places found</div><div class="es-sub">Try adjusting your search keywords.</div></div>';
+    if (resultWrap) resultWrap.style.display = 'block';
+    return;
+  }
+  const opt = data.best_option;
+  const features = ((data.user_intent && data.user_intent.features) || []).map(f => `<span class="badge" style="background:var(--blue-bg);color:var(--blue);border:none">#${escHtml(f)}</span>`).join('');
+  const safeName = escHtml(opt.name || 'Recommended place');
+  const safeSuggestion = escHtml(opt.suggestion || 'Lower-carbon option based on your request.');
+  const routeName = String(opt.name || 'Recommended place').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+  const lat = Number(opt.lat);
+  const lon = Number(opt.lon);
+  const isBusiness = typeof ecoAccountType !== 'undefined' && ecoAccountType === 'business';
+  const actionLabel = isBusiness ? 'Set planner start' : 'Route to here';
+  const actionSub = isBusiness ? 'Business mode will place this on the planner map without opening routes.' : 'Personal mode will fill Current Location and the destination route inputs.';
+
+  resDiv.innerHTML = `<div class="slabel">AI Intent Extraction</div><div style="margin-bottom:16px;display:flex;gap:6px;flex-wrap:wrap"><span class="badge" style="background:var(--accent-bg);color:var(--accent);border:none">${escHtml((data.user_intent && data.user_intent.category) || 'place')}</span>${features}</div><div class="slabel">Best Eco Option</div><div class="rcard best" style="cursor:default; margin-bottom:12px"><div class="rctop"><div class="rc-color" style="background:var(--accent)">?</div><div style="flex:1;min-width:0"><div class="rcname" style="font-size:15px">${safeName}</div><div style="font-size:11px;color:var(--text3);margin-top:2px">Rating: ${opt.rating || '-'} ? ${opt.distance_km || '-'} km away</div></div></div><div class="ebar"><div class="etrack"><div class="efill" style="width:${Math.max(0, Math.min(100, Number(opt.eco_score) || 0))}%;background:var(--accent)"></div></div><span class="enum" style="color:var(--accent)">ECO ${opt.eco_score || 0}</span></div><div style="margin-top:12px;font-size:12px;color:var(--text2);background:rgba(255,255,255,0.03);padding:10px;border-radius:8px;border:1px dashed var(--border)"><b style="color:var(--accent)">AI Suggestion:</b><br>${safeSuggestion}<br><div style="margin-top:6px;font-family:var(--mono);font-size:11px;color:var(--text3)">Est. Carbon Cost: ${opt.carbon_cost_kg || 0} kg CO2</div></div><button class="btn-nav" style="margin-top:12px;width:100%;padding:10px;font-size:13px" onclick="setRecommendRoute(${lat}, ${lon}, '${routeName}')">${actionLabel}</button><div style="margin-top:8px;font-size:10.5px;color:var(--text3);line-height:1.35">${actionSub}</div></div>`;
+  if (resultWrap) resultWrap.style.display = 'block';
+}
+function setRecommendRoute(lat, lon, name) {
+  closeSidePanel();
+  const isBusiness = typeof ecoAccountType !== 'undefined' && ecoAccountType === 'business';
+  if (isBusiness) {
+    document.body.classList.add('planner-mode');
+    if (typeof ECO_MODE !== 'undefined') ECO_MODE = 'planner';
+    if (typeof ecoSetPlannerLocation === 'function') {
+      ecoSetPlannerLocation(Number(lat), Number(lon), name || 'Recommended place', 0);
+    } else if (typeof map !== 'undefined' && map && map.flyTo) {
+      map.flyTo([Number(lat), Number(lon)], 15, { animate: true, duration: 0.6 });
+    }
+    const plannerPanel = document.getElementById('plannerPanel');
+    if (plannerPanel) {
+      plannerPanel.classList.remove('open');
+      plannerPanel.offsetWidth;
+      requestAnimationFrame(() => plannerPanel.classList.add('open'));
+    }
+    if (typeof showToast === 'function') showToast('Planner start set from AI Explore.');
+    return;
+  }
+  if (typeof setPOI === 'function') {
+    setPOI(lat, lon, name, 'end');
+    if (ecoUserPos) setPOI(ecoUserPos.lat, ecoUserPos.lon, 'Current Location', 'start');
+    else if (typeof pickCurrentLoc === 'function') pickCurrentLoc('s');
+    return;
+  }
+  if (typeof window.C === 'undefined' || !window.C) window.C = {};
+  window.C.e = {lat, lon, name};
+  const end = document.getElementById('iEnd');
+  if (end) end.value = name;
+  try { drawDraftMarker('e', window.C.e); } catch (_e) {}
+}
 let _ecoToastTimer = null;
 function ecoShowDemoToast(msg) {
   let t = document.getElementById('ecoDemoToast');
@@ -7459,11 +9687,16 @@ function ecoShowDemoToast(msg) {
 
 // User profile cached client-side (loaded after login)
 let ecoUserProfile = null;            // {home_lat, home_lon, work_lat, work_lon, is_oku, oku_needs}
-let ecoAccountType = 'personal';      // 'personal' | 'business'
+// Restore last-known account type (set on previous successful login) so the
+// initial render is right for returning users; default to 'personal' otherwise.
+let ecoAccountType = (typeof localStorage !== 'undefined' && localStorage.getItem('ecoLastAcctType')) || 'personal';
 let ecoBizMeta     = null;            // {business_name, ssm_number, tier, is_mikro}
 let ecoUserPos     = null;            // {lat, lon} cached browser geolocation
 let ecoSignupAcctType = 'personal';   // chosen on the auth screen
 let ecoSSMFile     = null;            // pending SSM cert file blob
+
+// Start in "unknown" state so we don't flash the wrong UI before profile loads
+document.body.classList.add('acct-unknown');
 
 // ─── Auth: account-type tab switching ───
 function authSetAcctType(t) {
@@ -7589,6 +9822,7 @@ async function ecoFinaliseSignup() {
       });
     } catch(e) { console.warn('[signup] personal profile write failed:', e); }
     ecoAccountType = 'personal';
+    try { localStorage.removeItem('ecoLastAcctType'); } catch(_) {}
     ecoApplyAccountType();
     return;
   }
@@ -7635,13 +9869,29 @@ function ecoApplyAccountType() {
 
   // Personal default → citizen mode visible, planner panel hidden (no toggle shown)
   // Business default → planner mode visible
+  const _plannerPanelEl = document.getElementById('plannerPanel');
   if (ecoAccountType === 'business') {
     document.body.classList.add('planner-mode');
     ECO_MODE = 'planner';
+    if (_plannerPanelEl) {
+      _plannerPanelEl.classList.remove('open');
+      // eslint-disable-next-line no-unused-expressions
+      _plannerPanelEl.offsetWidth;
+      requestAnimationFrame(() => _plannerPanelEl.classList.add('open'));
+    }
   } else {
     document.body.classList.remove('planner-mode');
     ECO_MODE = 'citizen';
+    if (_plannerPanelEl) _plannerPanelEl.classList.remove('open');
   }
+
+  // Remember this for next login so we render correctly on first paint
+  try {
+    localStorage.setItem('ecoLastAcctType', ecoAccountType);
+  } catch(_) { /* private mode or storage disabled */ }
+
+  // We now know the account type - drop the placeholder class
+  document.body.classList.remove('acct-unknown');
 }
 
 // ─── Load full profile after login (called from boot) ───
@@ -7767,7 +10017,7 @@ function ecoRenderCarpoolResults(d) {
   if (matches.length === 0) {
     let msg = 'No matches yet — be the first to publish your route!';
     if (d.oku_strict_active && d.suppressed_non_oku) {
-      msg = `No OKU-friendly matches right now. Hid ${d.suppressed_non_oku} non-accessible offer(s). Untick "Strict OKU" above to see all.`;
+      msg = 'No OKU-friendly matches right now. Hid ' + d.suppressed_non_oku + ' non-accessible offer(s). Untick "Strict OKU" above to see all.';
     }
     wrap.innerHTML = `<div style="color:var(--text3); font-size:13px; padding:14px 0; text-align:center">${msg}</div>`;
     return;
@@ -8075,6 +10325,7 @@ function ecoBootV3() {
         if (ecoAccountType !== 'business') {
           ecoLoadTodaySchedule();
           ecoPollNotifications();
+          _ecoStartClock();
           setInterval(ecoPollNotifications, 60000);
           setInterval(ecoLoadTodaySchedule, 5 * 60 * 1000);
         }
@@ -8101,7 +10352,9 @@ window.addEventListener('load', () => {
 });
 window.addEventListener('resize', () => {
   if (window.map) window.map.invalidateSize();
+  _ecoUpdateProactiveToastAnchor();
 });
+
 
 </script>
 </body>

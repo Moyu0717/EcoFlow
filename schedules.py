@@ -23,6 +23,8 @@ from __future__ import annotations
 
 import os
 import time
+import asyncio
+import math
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Dict, Any
@@ -40,6 +42,30 @@ MYT = timezone(timedelta(hours=8))
 
 # ── FastAPI router ────────────────────────────────────────────────────────────
 schedules_router = APIRouter(prefix="/api/v1/schedules", tags=["Schedules"])
+_proactive_loop_task: Optional[asyncio.Task] = None
+
+
+def start_proactive_loop() -> None:
+    """Start the in-process proactive watcher when external schedulers are down."""
+    global _proactive_loop_task
+    if _proactive_loop_task and not _proactive_loop_task.done():
+        return
+
+    async def _runner():
+        log.info("Proactive schedule loop started (10s cadence).")
+        while True:
+            try:
+                # 【关键修复】：Cloud Scheduler 暂停时由 FastAPI 进程自驱；
+                # proactive_check 内部每次都会用 datetime.now(MYT) 取马来西亚时间。
+                await asyncio.to_thread(proactive_check, 60, None)
+            except Exception as e:
+                log.warning(f"proactive loop tick failed: {e}", exc_info=True)
+            await asyncio.sleep(10)
+
+    try:
+        _proactive_loop_task = asyncio.create_task(_runner())
+    except RuntimeError as e:
+        log.warning(f"Could not start proactive loop: {e}")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -229,7 +255,7 @@ def proactive_check(window_min: int = Query(default=60, ge=15, le=180),
     Pass `user_id` to scope the run to a single user (used for demo
     & manual triggers from the UI).
     """
-    from main import (db, get_osrm, get_traffic, build_options,
+    from main import (db, get_osrm, get_traffic, build_options, _mapbox_traffic_along,
                       CO2, RM, call_gemini)
 
     now_my   = datetime.now(MYT)
@@ -249,14 +275,24 @@ def proactive_check(window_min: int = Query(default=60, ge=15, le=180),
         if not _fires_today(s, today, weekday):
             continue
 
-        mins_to_go = _minutes_until(s["departure_time"], now_my)
-        if mins_to_go is None or not (15 <= mins_to_go <= window_min):
+        secs_to_go = _seconds_until(s["departure_time"], now_my)
+        if secs_to_go is None:
+            continue
+        if not (-120 <= secs_to_go <= window_min * 60):
             # Outside watch window
             continue
+        mins_to_go = math.floor(secs_to_go / 60.0)
+
+        if secs_to_go > 30 * 60:
+            priority = "info"
+        elif secs_to_go > 2 * 60:
+            priority = "warn"
+        else:
+            priority = "urgent"
 
         # Avoid double-firing — check whether we've already notified
         # for this schedule today.
-        notif_id = f"{s['schedule_id']}_{today}"
+        notif_id = f"{s['schedule_id']}_{today}_{priority}"
         if db.collection("user_notifications").document(notif_id).get().exists:
             continue
 
@@ -265,10 +301,16 @@ def proactive_check(window_min: int = Query(default=60, ge=15, le=180),
             dist_km, base_t = get_osrm(
                 s["start_lon"], s["start_lat"], s["end_lon"], s["end_lat"]
             )
-            traffic, congestion = get_traffic(s["departure_time"])
+            live = _mapbox_traffic_along(s["start_lat"], s["start_lon"], s["end_lat"], s["end_lon"])
+            if live:
+                traffic, congestion = live["multiplier"], live["congestion_label"]
+            else:
+                traffic, congestion = get_traffic(s["departure_time"])
             options = build_options(
                 dist_km, base_t, traffic, congestion,
                 s["departure_time"], has_vehicle=True,
+                s_lat=s["start_lat"], s_lon=s["start_lon"],
+                e_lat=s["end_lat"], e_lon=s["end_lon"],
             )
             weather = _get_weather(s["start_lat"], s["start_lon"])
         except Exception as e:
@@ -316,6 +358,7 @@ def proactive_check(window_min: int = Query(default=60, ge=15, le=180),
                 continue
 
         # ─── Compose the message via Gemini ──────────────────────────────
+        available_modes = sorted({o["mode"] for o in options})
         prompt = f"""You are EcoFlow's proactive commute agent.
 A user has a saved schedule: "{s['label']}" — leaving at {s['departure_time']}
 ({mins_to_go} minutes from now). Trip is {round(dist_km, 1)} km.
@@ -327,6 +370,9 @@ Current conditions:
   RM {best['cost_rm']:.2f}, {best['carbon_kg']:.2f} kg CO₂, eco-score {best['eco_score']}/100.
 
 User's usual choice: {preferred or 'unknown'}.
+Available modes here: {', '.join(available_modes)}.
+DO NOT recommend a mode that is not in the available list, even if it
+would theoretically be greener - the user does not have access to it.
 
 Why we're pinging them: {'; '.join(reasons)}.
 
@@ -349,8 +395,16 @@ Write ONE friendly notification (≤ 35 words, 1 emoji max) telling them:
             "user_id":          s["user_id"],
             "schedule_id":      s["schedule_id"],
             "schedule_label":   s["label"],
+            "start_lat":        s["start_lat"],
+            "start_lon":        s["start_lon"],
+            "end_lat":          s["end_lat"],
+            "end_lon":          s["end_lon"],
+            "start_name":       s.get("start_name", "Home"),
+            "end_name":         s.get("end_name", "Destination"),
             "departure_time":   s["departure_time"],
             "minutes_until":    mins_to_go,
+            "seconds_until_departure": secs_to_go,
+            "priority":         priority,
             "message":          message,
             "recommended_mode": best["mode"],
             "recommended_time_mins": best["time_mins"],
@@ -372,6 +426,7 @@ Write ONE friendly notification (≤ 35 words, 1 emoji max) telling them:
             "schedule_id":  s["schedule_id"],
             "label":        s["label"],
             "minutes_until": mins_to_go,
+            "priority":      priority,
             "message":      message,
         })
         log.info(
@@ -451,14 +506,24 @@ def _fires_today(schedule: Dict[str, Any], today_iso: str, weekday: int) -> bool
     return False
 
 
-def _minutes_until(hhmm: str, now_my: datetime) -> Optional[int]:
-    """Minutes from `now_my` until today's HH:MM (Malaysia time). Negative = past."""
+def _seconds_until(hhmm: str, now_my: datetime) -> Optional[int]:
+    """Seconds from `now_my` until today's HH:MM:00 (Malaysia time). Negative = past."""
     try:
         hh, mm = hhmm.split(":")
         target = now_my.replace(hour=int(hh), minute=int(mm),
                                 second=0, microsecond=0)
-        delta = (target - now_my).total_seconds() / 60.0
-        return int(delta)
+        return int((target - now_my).total_seconds())
+    except Exception:
+        return None
+
+
+def _minutes_until(hhmm: str, now_my: datetime) -> Optional[int]:
+    """Minutes until today's HH:MM, floor-rounded (so -0.1 minutes -> -1)."""
+    secs = _seconds_until(hhmm, now_my)
+    if secs is None:
+        return None
+    try:
+        return math.floor(secs / 60.0)
     except Exception:
         return None
 

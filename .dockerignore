@@ -1,0 +1,11 @@
+.git
+.gitignore
+.env
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.swp
+README-cloudshell.txt
+Ecoflow.zip
+EcoFlow.zip
